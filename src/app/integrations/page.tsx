@@ -276,43 +276,50 @@ export default function IntegrationsPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <h1 className="text-3xl font-bold text-gray-900">Integrations</h1>
-        <p className="text-gray-600">Loading...</p>
+      <div className="space-y-4 md:space-y-6 px-4 md:px-0">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Integrations</h1>
+        <div className="text-center py-8">
+          <div className="animate-spin rounded-full h-6 w-6 md:h-8 md:w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 text-sm md:text-base">Loading integrations...</p>
+        </div>
       </div>
     )
   }
 
   if (!user) {
     return (
-      <div className="space-y-6">
-        <h1 className="text-3xl font-bold text-gray-900">Integrations</h1>
-        <div className="text-center py-12">
-          <p className="text-gray-600 mb-4">You need to be logged in to manage integrations.</p>
-          <Button onClick={() => window.location.href = '/auth'}>Sign In</Button>
+      <div className="space-y-4 md:space-y-6 px-4 md:px-0">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Integrations</h1>
+        <div className="text-center py-8 md:py-12">
+          <div className="text-4xl md:text-6xl mb-4">🔗</div>
+          <p className="text-gray-600 mb-4 text-sm md:text-base">You need to be logged in to manage integrations.</p>
+          <Button onClick={() => window.location.href = '/auth'} className="text-sm md:text-base">
+            Sign In
+          </Button>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">🔗 Integrations</h1>
-        <p className="text-lg text-gray-600">
+    <div className="space-y-4 md:space-y-6 px-4 md:px-0">
+      <div className="text-center mb-6 md:mb-8">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">🔗 Integrations</h1>
+        <p className="text-sm md:text-lg text-gray-600">
           Connect your tools to automatically sync updates into FounderOS
         </p>
       </div>
 
       {/* Quick Actions */}
-      <Card className="mb-6">
+      <Card className="mb-4 md:mb-6">
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-gray-900">Quick Actions</h3>
-          <div className="flex flex-wrap gap-3">
+          <h3 className="text-base md:text-lg font-semibold text-gray-900">Quick Actions</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Button
               variant="primary"
               size="sm"
               onClick={triggerFirefliesSync}
+              className="text-xs sm:text-sm"
             >
               🔄 Sync Fireflies Meetings
             </Button>
@@ -320,6 +327,7 @@ export default function IntegrationsPage() {
               variant="outline"
               size="sm"
               onClick={generateFlashcards}
+              className="text-xs sm:text-sm"
             >
               🧠 Generate Flashcards (Last 15 Days)
             </Button>
@@ -327,23 +335,23 @@ export default function IntegrationsPage() {
         </div>
       </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         {Object.entries(serviceInfo).map(([service, info]) => {
           const integration = getServiceIntegration(service)
           const isConnected = !!integration
           const isConnecting = connecting === service
 
           return (
-            <Card key={service} className="p-6">
+            <Card key={service} className="p-4 md:p-6">
               <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center space-x-3">
-                  <span className="text-2xl">{info.icon}</span>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">{info.name}</h3>
-                    <p className="text-sm text-gray-600">{info.description}</p>
+                <div className="flex items-center space-x-3 min-w-0 flex-1">
+                  <span className="text-xl md:text-2xl flex-shrink-0">{info.icon}</span>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-base md:text-lg font-semibold text-gray-900">{info.name}</h3>
+                    <p className="text-xs md:text-sm text-gray-600 break-words">{info.description}</p>
                   </div>
                 </div>
-                <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                <div className={`px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ml-2 ${
                   isConnected 
                     ? 'bg-green-100 text-green-800' 
                     : 'bg-gray-100 text-gray-600'
@@ -354,27 +362,28 @@ export default function IntegrationsPage() {
 
               {isConnected && integration && (
                 <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                  <div className="text-sm space-y-1">
+                  <div className="text-xs md:text-sm space-y-1">
                     {integration.team_name && (
-                      <p><strong>Team:</strong> {integration.team_name}</p>
+                      <p className="break-words"><strong>Team:</strong> {integration.team_name}</p>
                     )}
                     {integration.user_email && (
-                      <p><strong>Account:</strong> {integration.user_email}</p>
+                      <p className="break-words"><strong>Account:</strong> {integration.user_email}</p>
                     )}
                     {integration.last_sync_at && (
-                      <p><strong>Last Sync:</strong> {new Date(integration.last_sync_at).toLocaleString()}</p>
+                      <p><strong>Last Sync:</strong> {new Date(integration.last_sync_at).toLocaleDateString()}</p>
                     )}
                   </div>
                 </div>
               )}
 
-              <div className="flex space-x-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 {isConnected ? (
                   <>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => triggerSync(integration!.id)}
+                      className="text-xs sm:text-sm"
                     >
                       Sync Now
                     </Button>
@@ -382,6 +391,7 @@ export default function IntegrationsPage() {
                       variant="outline"
                       size="sm"
                       onClick={() => disconnectService(integration!.id)}
+                      className="text-xs sm:text-sm text-red-600 border-red-300 hover:bg-red-50"
                     >
                       Disconnect
                     </Button>
@@ -392,6 +402,7 @@ export default function IntegrationsPage() {
                     size="sm"
                     onClick={() => connectService(service)}
                     disabled={isConnecting}
+                    className="text-xs sm:text-sm w-full sm:w-auto"
                   >
                     {isConnecting ? 'Connecting...' : 'Connect'}
                   </Button>
@@ -402,30 +413,33 @@ export default function IntegrationsPage() {
         })}
       </div>
 
-      <Card title="Integration Status" className="mt-8">
+      <Card title="Integration Status" className="mt-6 md:mt-8">
         <div className="space-y-4">
           {integrations.length === 0 ? (
-            <p className="text-gray-500 text-center py-4">
-              No integrations connected yet. Connect your first integration above!
-            </p>
+            <div className="text-center py-6 md:py-8">
+              <div className="text-3xl md:text-4xl mb-4">🔗</div>
+              <p className="text-gray-500 text-sm md:text-base">
+                No integrations connected yet. Connect your first integration above!
+              </p>
+            </div>
           ) : (
             <div className="space-y-3">
               {integrations.map((integration) => (
                 <div key={integration.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <span className="text-lg">
+                  <div className="flex items-center space-x-3 min-w-0 flex-1">
+                    <span className="text-base md:text-lg flex-shrink-0">
                       {serviceInfo[integration.service]?.icon}
                     </span>
-                    <div>
-                      <p className="font-medium text-gray-900">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-gray-900 text-sm md:text-base">
                         {serviceInfo[integration.service]?.name}
                       </p>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-xs md:text-sm text-gray-600">
                         Connected {new Date(integration.created_at).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
-                  <div className="text-right">
+                  <div className="text-right flex-shrink-0 ml-3">
                     <div className={`px-2 py-1 rounded-full text-xs font-medium ${
                       integration.is_active 
                         ? 'bg-green-100 text-green-800' 

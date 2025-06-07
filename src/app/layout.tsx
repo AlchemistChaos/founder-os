@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Navigation } from "@/components/Navigation";
@@ -19,6 +19,13 @@ export const metadata: Metadata = {
   description: "Daily review tool + knowledge assistant for founders",
 };
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -30,9 +37,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50`}
       >
         <AuthProvider>
-          <div className="min-h-screen">
+          <div className="min-h-screen flex flex-col">
             <Navigation />
-            <main className="container mx-auto px-4 py-8">
+            <main className="flex-1 container mx-auto px-4 py-4 md:py-8 max-w-7xl">
               {children}
             </main>
           </div>

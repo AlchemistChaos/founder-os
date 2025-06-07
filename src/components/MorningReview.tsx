@@ -160,10 +160,10 @@ export function MorningReview() {
   }, [])
 
   return (
-    <div className="space-y-6">
-      <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">🌅 Good Morning!</h1>
-        <p className="text-lg text-gray-600">{currentDate}</p>
+    <div className="space-y-4 md:space-y-6 px-4 md:px-0">
+      <div className="text-center mb-6 md:mb-8">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">🌅 Good Morning!</h1>
+        <p className="text-base md:text-lg text-gray-600">{currentDate}</p>
       </div>
 
       {/* Flashcards Due Today */}
@@ -171,8 +171,8 @@ export function MorningReview() {
         {flashcardsDue.length > 0 ? (
           <div className="space-y-4">
             {flashcardsDue.slice(0, 3).map((card) => (
-              <div key={card.id} className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <p className="font-medium text-blue-900 mb-2">{card.question}</p>
+              <div key={card.id} className="p-3 md:p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="font-medium text-blue-900 mb-2 text-sm md:text-base">{card.question}</p>
                 <div className="flex flex-wrap gap-1 mb-3">
                   {card.tags.map((tag) => (
                     <span key={tag} className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
@@ -180,26 +180,28 @@ export function MorningReview() {
                     </span>
                   ))}
                 </div>
-                <Button size="sm" variant="outline">Review Card</Button>
+                <Button size="sm" variant="outline" className="text-xs md:text-sm">Review Card</Button>
               </div>
             ))}
-            <div className="flex justify-between">
+            <div className="flex flex-col sm:flex-row gap-3 sm:justify-between">
               <Button 
                 variant="primary" 
                 onClick={() => window.location.href = '/flashcards?mode=review'}
+                className="w-full sm:w-auto text-sm md:text-base"
               >
                 Start Review Session
               </Button>
               <Button 
                 variant="outline"
                 onClick={() => window.location.href = '/flashcards'}
+                className="w-full sm:w-auto text-sm md:text-base"
               >
                 View All Cards
               </Button>
             </div>
           </div>
         ) : (
-          <p className="text-gray-500 text-center py-8">No flashcards due today! 🎉</p>
+          <p className="text-gray-500 text-center py-6 md:py-8 text-sm md:text-base">No flashcards due today! 🎉</p>
         )}
       </Card>
 
@@ -207,39 +209,39 @@ export function MorningReview() {
       <Card title="📊 Yesterday's Updates" subtitle="Key developments across your team">
         <div className="space-y-4">
           {businessUpdates.map((update) => (
-            <div key={update.id} className="flex items-start space-x-3 p-4 bg-gray-50 rounded-lg">
-              <div className="flex-shrink-0">
+            <div key={update.id} className="flex items-start space-x-3 p-3 md:p-4 bg-gray-50 rounded-lg">
+              <div className="flex-shrink-0 text-lg">
                 {update.type === 'slack' && <span className="text-purple-600">💬</span>}
                 {update.type === 'linear' && <span className="text-blue-600">📋</span>}
                 {update.type === 'doc' && <span className="text-green-600">📄</span>}
               </div>
-              <div className="flex-1">
-                <p className="text-gray-900">{update.content}</p>
-                <p className="text-sm text-gray-500 mt-1">from {update.source}</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-gray-900 text-sm md:text-base break-words">{update.content}</p>
+                <p className="text-xs md:text-sm text-gray-500 mt-1">from {update.source}</p>
               </div>
-              <Button size="sm" variant="outline">Tag</Button>
+              <Button size="sm" variant="outline" className="flex-shrink-0 text-xs">Tag</Button>
             </div>
           ))}
-          <Button variant="outline" className="w-full">View All Updates</Button>
+          <Button variant="outline" className="w-full text-sm md:text-base">View All Updates</Button>
         </div>
       </Card>
 
       {/* AI-Generated Insights */}
       <Card title="🤖 AI Meeting Insights" subtitle="Goal-aligned insights from your recent meetings (3-agent pipeline)">
         {insightsLoading ? (
-          <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600 mx-auto mb-4"></div>
-            <p className="text-gray-500">Loading AI insights...</p>
+          <div className="text-center py-6 md:py-8">
+            <div className="animate-spin rounded-full h-6 w-6 md:h-8 md:w-8 border-b-2 border-amber-600 mx-auto mb-4"></div>
+            <p className="text-gray-500 text-sm md:text-base">Loading AI insights...</p>
           </div>
         ) : aiInsights.length > 0 ? (
           <div className="space-y-4">
             {aiInsights.map((insight) => (
-              <div key={insight.id} className="p-6 bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg border border-amber-200">
+              <div key={insight.id} className="p-4 md:p-6 bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg border border-amber-200">
                 {/* Header with title and badges */}
-                <div className="flex items-start justify-between mb-4">
-                  <h4 className="font-semibold text-amber-900 flex-1 text-lg">{insight.insight_text}</h4>
-                  <div className="flex items-center space-x-2 ml-4">
-                    <span className={`px-2 py-1 text-xs rounded-full ${
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-4 space-y-3 sm:space-y-0">
+                  <h4 className="font-semibold text-amber-900 text-base md:text-lg leading-tight pr-0 sm:pr-4">{insight.insight_text}</h4>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`px-2 py-1 text-xs rounded-full whitespace-nowrap ${
                       insight.priority === 'high' ? 'bg-red-100 text-red-700' :
                       insight.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
                       'bg-green-100 text-green-700'
@@ -247,11 +249,11 @@ export function MorningReview() {
                       {insight.priority} priority
                     </span>
                     {insight.reaction && (
-                      <span className="px-2 py-1 text-xs bg-pink-100 text-pink-700 rounded-full">
+                      <span className="px-2 py-1 text-xs bg-pink-100 text-pink-700 rounded-full whitespace-nowrap">
                         ⚡ High Impact
                       </span>
                     )}
-                    <span className="inline-block bg-amber-200 text-amber-900 px-3 py-1 rounded-full text-xs font-medium">
+                    <span className="inline-block bg-amber-200 text-amber-900 px-2 md:px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap">
                       Score: {insight.goal_scores.overall}/40
                     </span>
                   </div>
@@ -275,7 +277,7 @@ export function MorningReview() {
                           <span className="inline-block bg-amber-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center mr-2 mt-0.5 flex-shrink-0">
                             {index + 1}
                           </span>
-                          <span>{step.trim()}</span>
+                          <span className="break-words">{step.trim()}</span>
                         </div>
                       ))}
                     </div>
@@ -283,19 +285,22 @@ export function MorningReview() {
                 )}
                 
                 {/* Footer */}
-                <div className="flex items-center justify-between pt-3 border-t border-amber-200">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pt-3 border-t border-amber-200 space-y-3 sm:space-y-0">
                   <div className="text-xs text-amber-700">
-                    From: {insight.meeting_title} • {insight.category}
-                    {insight.interest_level && (
-                      <span className="ml-2 px-2 py-1 bg-amber-100 text-amber-700 rounded text-xs">
-                        {insight.interest_level} interest
-                      </span>
-                    )}
+                    <div className="font-medium">From: {insight.meeting_title}</div>
+                    <div className="flex flex-wrap items-center gap-2 mt-1">
+                      <span>{insight.category}</span>
+                      {insight.interest_level && (
+                        <span className="px-2 py-1 bg-amber-100 text-amber-700 rounded text-xs">
+                          {insight.interest_level} interest
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex space-x-2">
-                    <Button size="sm" variant="outline">Add Reflection</Button>
+                  <div className="flex flex-col xs:flex-row gap-2">
+                    <Button size="sm" variant="outline" className="text-xs whitespace-nowrap">Add Reflection</Button>
                     {!insight.has_flashcard && (
-                      <Button size="sm" variant="outline">Create Flashcard</Button>
+                      <Button size="sm" variant="outline" className="text-xs whitespace-nowrap">Create Flashcard</Button>
                     )}
                   </div>
                 </div>
@@ -305,15 +310,16 @@ export function MorningReview() {
               <Button 
                 variant="outline"
                 onClick={() => window.location.href = '/insights'}
+                className="w-full sm:w-auto text-sm md:text-base"
               >
                 View All AI Insights
               </Button>
             </div>
           </div>
         ) : (
-          <div className="text-center py-8">
-            <p className="text-gray-500 mb-4">No AI insights available yet.</p>
-            <p className="text-sm text-gray-400">Process meetings through the 3-agent pipeline to see insights here.</p>
+          <div className="text-center py-6 md:py-8">
+            <p className="text-gray-500 mb-4 text-sm md:text-base">No AI insights available yet.</p>
+            <p className="text-xs md:text-sm text-gray-400">Process meetings through the 3-agent pipeline to see insights here.</p>
           </div>
         )}
       </Card>
@@ -321,32 +327,25 @@ export function MorningReview() {
       {/* Quick Goal Check-in */}
       <Card title="🎯 Quick Goal Check-in" subtitle="How are you tracking towards your objectives?">
         <div className="space-y-4">
-          <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-            <h4 className="font-semibold text-green-900 mb-2">Q1 Growth Target: 50% MRR increase</h4>
+          <div className="p-3 md:p-4 bg-green-50 rounded-lg border border-green-200">
+            <h4 className="font-semibold text-green-900 mb-2 text-sm md:text-base">Q1 Growth Target: 50% MRR increase</h4>
             <div className="w-full bg-green-200 rounded-full h-2">
               <div className="bg-green-600 h-2 rounded-full" style={{ width: '70%' }}></div>
             </div>
-            <p className="text-sm text-green-700 mt-2">70% complete - ahead of schedule!</p>
+            <p className="text-xs md:text-sm text-green-700 mt-2">70% complete - ahead of schedule!</p>
           </div>
           
-          <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
-            <h4 className="font-semibold text-orange-900 mb-2">Team Expansion: Hire 5 engineers</h4>
+          <div className="p-3 md:p-4 bg-orange-50 rounded-lg border border-orange-200">
+            <h4 className="font-semibold text-orange-900 mb-2 text-sm md:text-base">Team Expansion: Hire 5 engineers</h4>
             <div className="w-full bg-orange-200 rounded-full h-2">
               <div className="bg-orange-600 h-2 rounded-full" style={{ width: '40%' }}></div>
             </div>
-            <p className="text-sm text-orange-700 mt-2">2 of 5 hired - need to accelerate recruiting</p>
+            <p className="text-xs md:text-sm text-orange-700 mt-2">2 of 5 hired - need to accelerate recruiting</p>
           </div>
           
-          <Button variant="outline" className="w-full">Update Goals</Button>
+          <Button variant="outline" className="w-full text-sm md:text-base">Update Goals</Button>
         </div>
       </Card>
-
-      {/* Action Items */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <Button variant="primary" className="flex-1">Start Daily Reflection</Button>
-        <Button variant="outline" className="flex-1">Add Quick Note</Button>
-        <Button variant="outline" className="flex-1">Review Yesterday</Button>
-      </div>
     </div>
   )
 }
