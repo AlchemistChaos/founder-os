@@ -15,7 +15,11 @@ interface Flashcard {
   created_at: string
 }
 
-export function FlashcardReview() {
+interface FlashcardReviewProps {
+  theme?: 'light' | 'dark' | 'auto'
+}
+
+export function FlashcardReview({ theme = 'auto' }: FlashcardReviewProps) {
   const { user, loading: authLoading } = useAuth()
   const [flashcards, setFlashcards] = useState<Flashcard[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -24,6 +28,19 @@ export function FlashcardReview() {
   const [error, setError] = useState<string | null>(null)
   const [reviewedCount, setReviewedCount] = useState(0)
   const [isFlipping, setIsFlipping] = useState(false)
+
+  // Determine theme based on time of day or explicit prop
+  const getTheme = () => {
+    if (theme !== 'auto') return theme
+    
+    const currentHour = new Date().getHours()
+    // Morning: 5 AM - 5 PM = light theme
+    // Evening: 5 PM - 5 AM = dark theme
+    return (currentHour >= 5 && currentHour < 17) ? 'light' : 'dark'
+  }
+
+  const currentTheme = getTheme()
+  const themeClass = currentTheme === 'light' ? 'theme-light' : 'theme-dark'
 
   const getAuthHeaders = async () => {
     try {
@@ -120,7 +137,7 @@ export function FlashcardReview() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-[#121212] flex items-center justify-center">
+      <div className={`${themeClass} min-h-screen flex items-center justify-center`}>
         <div className="skeleton w-80 h-64 rounded-2xl"></div>
       </div>
     )
@@ -128,12 +145,12 @@ export function FlashcardReview() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#121212] flex items-center justify-center p-4">
-        <div className="card-primary max-w-md w-full text-center fade-slide-in">
-          <h2 className="text-xl font-semibold text-white mb-4">
+      <div className={`${themeClass} min-h-screen flex items-center justify-center p-4`}>
+        <div className="card-container max-w-md w-full text-center animate-fade-in-up">
+          <h2 className="text-xl font-semibold mb-4">
             🔐 Sign In Required
           </h2>
-          <p className="text-[#888888] mb-6">
+          <p className="subtext mb-6">
             Please sign in to access your flashcards and start reviewing key insights from your meetings.
           </p>
           <Link href="/auth">
@@ -148,7 +165,7 @@ export function FlashcardReview() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#121212] flex items-center justify-center">
+      <div className={`${themeClass} min-h-screen flex items-center justify-center`}>
         <div className="flex flex-col items-center space-y-4">
           <div className="skeleton w-80 h-64 rounded-2xl"></div>
           <div className="skeleton w-64 h-4 rounded"></div>
@@ -159,12 +176,12 @@ export function FlashcardReview() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#121212] flex items-center justify-center p-4">
-        <div className="card-primary max-w-md w-full text-center">
-          <h2 className="text-xl font-semibold text-red-400 mb-4">
+      <div className={`${themeClass} min-h-screen flex items-center justify-center p-4`}>
+        <div className="card-container max-w-md w-full text-center">
+          <h2 className="text-xl font-semibold text-red-500 mb-4">
             ⚠️ Error
           </h2>
-          <p className="text-[#888888] mb-6">{error}</p>
+          <p className="subtext mb-6">{error}</p>
           <button onClick={fetchFlashcards} className="btn-primary w-full touch-target">
             Try Again
           </button>
@@ -175,12 +192,12 @@ export function FlashcardReview() {
 
   if (flashcards.length === 0) {
     return (
-      <div className="min-h-screen bg-[#121212] flex items-center justify-center p-4">
-        <div className="card-primary max-w-md w-full text-center fade-slide-in">
-          <h2 className="text-xl font-semibold text-white mb-4">
+      <div className={`${themeClass} min-h-screen flex items-center justify-center p-4`}>
+        <div className="card-container max-w-md w-full text-center animate-fade-in-up">
+          <h2 className="text-xl font-semibold mb-4">
             📚 No Flashcards Yet
           </h2>
-          <p className="text-[#888888] mb-6">
+          <p className="subtext mb-6">
             Flashcards will be generated automatically from your meetings. 
             Connect your meeting tools in the integrations page to get started.
           </p>
@@ -198,12 +215,12 @@ export function FlashcardReview() {
   const progressPercentage = (reviewedCount / flashcards.length) * 100
 
   return (
-    <div className="min-h-screen bg-[#121212] p-4">
+    <div className={`${themeClass} min-h-screen p-4`}>
       {/* Progress Header */}
-      <div className="max-w-md mx-auto mb-6 fade-slide-in">
+      <div className="max-w-md mx-auto mb-6 animate-fade-in-up">
         <div className="flex justify-between items-center mb-2">
-          <h1 className="text-2xl md:text-3xl font-bold text-white">📚 Flashcard Review</h1>
-          <span className="text-sm text-[#888888]">
+          <h1 className="header-text">📚 Flashcard Review</h1>
+          <span className="text-sm subtext">
             {reviewedCount} of {flashcards.length} reviewed
           </span>
         </div>
@@ -216,9 +233,9 @@ export function FlashcardReview() {
       </div>
 
       {/* Flashcard Container */}
-      <div className={`flashcard-container fade-slide-in ${isFlipping ? 'flip-card flipped' : ''}`}>
+      <div className={`flashcard-container animate-fade-in-up ${isFlipping ? 'transform scale-95 transition-transform duration-300' : ''}`}>
         {/* Card metadata */}
-        <div className="flashcard-meta">
+        <div className="text-xs subtext mb-4 uppercase tracking-wide">
           From: {currentCard.source_meeting_title || 'Meeting'} • {new Date(currentCard.created_at).toLocaleDateString()}
         </div>
 
@@ -231,36 +248,38 @@ export function FlashcardReview() {
         {!showAnswer ? (
           <button 
             onClick={handleShowAnswer}
-            className="btn-primary mx-auto block touch-target bounce-tap"
+            className="btn-show-answer mx-auto block touch-target"
             disabled={isFlipping}
           >
             {isFlipping ? 'Revealing...' : 'Show Answer'}
           </button>
         ) : (
-          <div className="fade-slide-in">
-            <div className="flashcard-answer">
-              {currentCard.answer}
+          <div className="animate-fade-in-up">
+            <div className="text-center mb-6 p-4 rounded-2xl border-2 border-dashed border-green-300 bg-green-50 dark:bg-green-500/10 dark:border-green-500/30">
+              <div className="text-green-700 dark:text-green-300 font-medium">
+                {currentCard.answer}
+              </div>
             </div>
             
             {/* Difficulty Buttons */}
-            <div className="flex justify-between gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <button 
                 onClick={() => handleDifficultyRating('hard')}
-                className="btn-difficulty-hard touch-target"
+                className="btn-difficulty-hard touch-target flex items-center justify-center gap-2"
               >
-                😓 Hard
+                <span>😓</span> Hard
               </button>
               <button 
                 onClick={() => handleDifficultyRating('medium')}
-                className="btn-difficulty-medium touch-target"
+                className="btn-difficulty-medium touch-target flex items-center justify-center gap-2"
               >
-                🤔 Medium
+                <span>🤔</span> Medium
               </button>
               <button 
                 onClick={() => handleDifficultyRating('easy')}
-                className="btn-difficulty-easy touch-target"
+                className="btn-difficulty-easy touch-target flex items-center justify-center gap-2"
               >
-                😊 Easy
+                <span>😊</span> Easy
               </button>
             </div>
           </div>
@@ -277,7 +296,7 @@ export function FlashcardReview() {
           ← Previous
         </button>
         
-        <span className="text-sm text-[#888888]">
+        <span className="text-sm subtext">
           {currentIndex + 1} of {flashcards.length}
         </span>
         
@@ -293,12 +312,12 @@ export function FlashcardReview() {
       {/* Completion State */}
       {reviewedCount === flashcards.length && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="card-primary max-w-md w-full text-center fade-slide-in">
+          <div className="card-container max-w-md w-full text-center animate-fade-in-up">
             <div className="text-4xl mb-4">🎉</div>
-            <h2 className="text-xl font-semibold text-white mb-2">
+            <h2 className="text-xl font-semibold mb-2">
               You're Ready!
             </h2>
-            <p className="text-[#888888] mb-6">
+            <p className="subtext mb-6">
               {flashcards.length} cards reviewed. Great work on building your knowledge!
             </p>
             <Link href="/">

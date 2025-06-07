@@ -160,39 +160,39 @@ export function MorningReview() {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'high': return 'text-red-400'
-      case 'medium': return 'text-yellow-400'
-      case 'low': return 'text-green-400'
-      default: return 'text-neutral-400'
+      case 'high': return 'text-red-600'
+      case 'medium': return 'text-yellow-600'
+      case 'low': return 'text-green-600'
+      default: return 'text-neutral-500'
     }
   }
 
   return (
-    <div className="min-h-screen bg-[#121212] p-4">
+    <div className="theme-light min-h-screen p-4">
       <div className="max-w-2xl mx-auto space-y-ritual">
         {/* Header */}
-        <div className="text-center mb-8 fade-slide-in">
-          <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
+        <div className="text-center mb-8 animate-fade-in-up">
+          <h1 className="header-text mb-2">
             good morning, River
           </h1>
-          <p className="text-[#888888]">{currentDate}</p>
+          <p className="subtext">{currentDate}</p>
         </div>
 
         {/* Flashcards Due */}
-        <div className="card-primary fade-slide-in">
-          <h2 className="section-header">
+        <div className="card-container animate-fade-in-up">
+          <h2 className="section-title mb-2">
             🧠 Flashcards Due
           </h2>
-          <p className="text-[#888888] mb-4">{flashcardsDue.length} cards ready for review</p>
+          <p className="subtext mb-4">{flashcardsDue.length} cards ready for review</p>
           
           {flashcardsDue.length > 0 ? (
             <div className="space-y-3">
               {flashcardsDue.slice(0, 3).map((card) => (
-                <div key={card.id} className="card-secondary">
-                  <p className="text-white text-sm mb-2 line-clamp-2">{card.question}</p>
+                <div key={card.id} className="bg-white border border-neutral-200 rounded-2xl p-4">
+                  <p className="text-neutral-900 text-sm mb-2 line-clamp-2">{card.question}</p>
                   <div className="flex flex-wrap gap-1 mb-3">
                     {card.tags.map((tag) => (
-                      <span key={tag} className="px-2 py-1 bg-blue-500/20 text-blue-300 text-xs rounded-full">
+                      <span key={tag} className="px-2 py-1 bg-blue-50 text-blue-600 text-xs rounded-full border border-blue-200">
                         {tag}
                       </span>
                     ))}
@@ -218,44 +218,44 @@ export function MorningReview() {
           ) : (
             <div className="text-center py-8">
               <div className="text-4xl mb-2">✅</div>
-              <p className="text-[#888888]">No cards due today. Great work!</p>
+              <p className="subtext">No cards due today. Great work!</p>
             </div>
           )}
         </div>
 
         {/* Top Insight */}
         {aiInsights.length > 0 && (
-          <div className="card-primary fade-slide-in">
-            <h2 className="section-header">
+          <div className="card-container animate-fade-in-up">
+            <h2 className="section-title mb-4">
               📊 Top Insight
             </h2>
-            <div className="insight-card bg-[#1A1A1A] border border-neutral-700">
-              <div className="insight-meta">
+            <div className="bg-white border border-neutral-200 rounded-2xl p-4">
+              <div className="text-xs text-neutral-500 mb-2 uppercase tracking-wide">
                 From: {aiInsights[0].meeting_title} • {aiInsights[0].meeting_date ? new Date(aiInsights[0].meeting_date).toLocaleDateString() : 'Recent'}
               </div>
-              <div className="insight-text">
+              <div className="text-neutral-900 text-sm mb-4">
                 {aiInsights[0].insight_text}
               </div>
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2">
-                  <span className={`text-xs px-2 py-1 rounded-full bg-neutral-700 ${getPriorityColor(aiInsights[0].priority)}`}>
+                  <span className={`text-xs px-2 py-1 rounded-full bg-neutral-100 border ${getPriorityColor(aiInsights[0].priority)}`}>
                     {aiInsights[0].priority.toUpperCase()}
                   </span>
-                  <span className="text-xs text-neutral-400">
+                  <span className="text-xs text-neutral-500">
                     Score: {aiInsights[0].goal_scores.overall}/10
                   </span>
                 </div>
                 <div className="flex gap-2">
                   <button 
                     onClick={() => handleInsightAction(aiInsights[0].id, 'star')}
-                    className="text-neutral-400 hover:text-yellow-400 transition-colors"
+                    className="text-neutral-400 hover:text-yellow-600 transition-colors touch-target"
                     title="Save"
                   >
                     ⭐
                   </button>
                   <button 
                     onClick={() => handleInsightAction(aiInsights[0].id, 'flashcard')}
-                    className="text-neutral-400 hover:text-blue-400 transition-colors"
+                    className="text-neutral-400 hover:text-blue-600 transition-colors touch-target"
                     title="Create Flashcard"
                   >
                     ➕
@@ -267,13 +267,13 @@ export function MorningReview() {
         )}
 
         {/* Today's Focus */}
-        <div className="card-primary fade-slide-in">
-          <h2 className="section-header">
+        <div className="card-container animate-fade-in-up">
+          <h2 className="section-title mb-4">
             ☀️ Today's Focus
           </h2>
-          <div className="card-secondary">
-            <div className="text-white font-medium mb-2">Outline video script</div>
-            <div className="text-[#888888] text-sm">Create detailed outline for next product demo video</div>
+          <div className="bg-white border border-neutral-200 rounded-2xl p-4">
+            <div className="text-neutral-900 font-medium mb-2">Outline video script</div>
+            <div className="subtext">Create detailed outline for next product demo video</div>
           </div>
           <button className="btn-secondary w-full mt-4">
             Update Focus
@@ -282,41 +282,41 @@ export function MorningReview() {
 
         {/* AI Insights */}
         {aiInsights.length > 1 && (
-          <div className="card-primary fade-slide-in">
-            <h2 className="section-header">
+          <div className="card-container animate-fade-in-up">
+            <h2 className="section-title mb-2">
               🎯 Recent Insights
             </h2>
-            <p className="text-[#888888] mb-4">AI-generated insights from your meetings</p>
+            <p className="subtext mb-4">AI-generated insights from your meetings</p>
             
             <div className="space-y-3">
               {aiInsights.slice(1, 4).map((insight) => (
-                <div key={insight.id} className="insight-card">
-                  <div className="insight-meta">
+                <div key={insight.id} className="bg-white border border-neutral-200 rounded-2xl p-4">
+                  <div className="text-xs text-neutral-500 mb-2 uppercase tracking-wide">
                     {insight.meeting_title} • {insight.meeting_date ? new Date(insight.meeting_date).toLocaleDateString() : 'Recent'}
                   </div>
-                  <div className="insight-text">
+                  <div className="text-neutral-900 text-sm mb-4">
                     {insight.insight_text}
                   </div>
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2">
-                      <span className={`text-xs px-2 py-1 rounded-full bg-neutral-700 ${getPriorityColor(insight.priority)}`}>
+                      <span className={`text-xs px-2 py-1 rounded-full bg-neutral-100 border ${getPriorityColor(insight.priority)}`}>
                         {insight.priority.toUpperCase()}
                       </span>
-                      <span className="text-xs text-neutral-400">
+                      <span className="text-xs text-neutral-500">
                         Score: {insight.goal_scores.overall}/10
                       </span>
                     </div>
                     <div className="flex gap-2">
                       <button 
                         onClick={() => handleInsightAction(insight.id, 'star')}
-                        className="text-neutral-400 hover:text-yellow-400 transition-colors text-sm"
+                        className="text-neutral-400 hover:text-yellow-600 transition-colors text-sm touch-target"
                         title="Save"
                       >
                         ⭐
                       </button>
                       <button 
                         onClick={() => handleInsightAction(insight.id, 'flashcard')}
-                        className="text-neutral-400 hover:text-blue-400 transition-colors text-sm"
+                        className="text-neutral-400 hover:text-blue-600 transition-colors text-sm touch-target"
                         title="Create Flashcard"
                       >
                         ➕
@@ -338,8 +338,8 @@ export function MorningReview() {
 
         {/* Loading state for insights */}
         {insightsLoading && (
-          <div className="card-primary">
-            <h2 className="section-header">
+          <div className="card-container">
+            <h2 className="section-title mb-4">
               🎯 Recent Insights
             </h2>
             <div className="space-y-3">
@@ -352,15 +352,15 @@ export function MorningReview() {
 
         {/* Recent Meetings */}
         {meetings.length > 0 && (
-          <div className="card-primary fade-slide-in">
-            <h2 className="section-header">
+          <div className="card-container animate-fade-in-up">
+            <h2 className="section-title mb-4">
               🎙️ Recent Meetings
             </h2>
             <div className="space-y-3">
               {meetings.map((meeting) => (
-                <div key={meeting.id} className="card-secondary">
-                  <div className="text-white font-medium mb-1">{meeting.title}</div>
-                  <div className="text-[#888888] text-sm mb-2 line-clamp-2">{meeting.summary}</div>
+                <div key={meeting.id} className="bg-white border border-neutral-200 rounded-2xl p-4">
+                  <div className="text-neutral-900 font-medium mb-1">{meeting.title}</div>
+                  <div className="subtext mb-2 line-clamp-2">{meeting.summary}</div>
                   <div className="text-xs text-neutral-400">
                     {new Date(meeting.timestamp).toLocaleDateString()}
                   </div>
@@ -377,10 +377,10 @@ export function MorningReview() {
         )}
 
         {/* CTA to start the day */}
-        <div className="text-center pb-8 fade-slide-in">
+        <div className="text-center pb-8 animate-fade-in-up">
           <button 
             onClick={() => window.location.href = '/flashcards?mode=review'}
-            className="floating-cta relative"
+            className="btn-primary px-8 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
           >
             Start Your Day →
           </button>
