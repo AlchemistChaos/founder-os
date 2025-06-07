@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "Founder OS Clipper",
+  "version": "1.0.0",
+  "description": "Save web content to your Founder OS knowledge base",
+  "permissions": [
+    "activeTab",
+    "contextMenus",
+    "storage"
+  ],
+  "host_permissions": [
+    "http://localhost:3000/*",
+    "https://your-founder-os-domain.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Save to Founder OS"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
