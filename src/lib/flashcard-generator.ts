@@ -160,7 +160,7 @@ async function createFlashcardFromAIInsight(userId: string, insight: any): Promi
         answer,
         due_at: dueDate.toISOString(),
         ease_factor: insight.reaction ? 2.8 : (insight.priority === 'high' ? 2.6 : 2.5),
-        interval: insight.reaction ? 0.1 : (insight.priority === 'high' ? 0.25 : 1),
+        interval: insight.reaction ? 1 : (insight.priority === 'high' ? 1 : 1), // Keep as integer (days)
         repetition_count: 0
       })
       .select('id')
