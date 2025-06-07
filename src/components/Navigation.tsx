@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useAuth } from '@/components/AuthProvider'
 
 const navItems = [
   { href: '/', label: 'Morning Review', icon: '🌅' },
@@ -13,6 +14,7 @@ const navItems = [
 
 export function Navigation() {
   const pathname = usePathname()
+  const { user, loading, signOut } = useAuth()
 
   return (
     <nav className="bg-white border-b border-gray-200 shadow-sm">
@@ -41,6 +43,33 @@ export function Navigation() {
                 </Link>
               ))}
             </div>
+          </div>
+
+          <div className="flex items-center space-x-4">
+            {!loading && (
+              <>
+                {user ? (
+                  <div className="flex items-center space-x-3">
+                    <span className="text-sm text-gray-700 hidden md:block">
+                      {user.email}
+                    </span>
+                    <button
+                      onClick={signOut}
+                      className="px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors"
+                    >
+                      Sign Out
+                    </button>
+                  </div>
+                ) : (
+                  <Link
+                    href="/auth"
+                    className="px-3 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
+                  >
+                    Sign In
+                  </Link>
+                )}
+              </>
+            )}
           </div>
 
           <div className="md:hidden">

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { supabase } from '@/lib/supabase'
 
 interface Clip {
   id: string
@@ -41,11 +42,21 @@ export function ClipsAndBookmarks() {
     // Fetch real meetings data
     const fetchMeetings = async () => {
       try {
-        const response = await fetch('/api/meetings', {
-          headers: {
-            'Authorization': 'Bearer mock-token'
-          }
-        })
+        // Get auth headers similar to other components
+        const { data: { session } } = await supabase.auth.getSession()
+        
+        if (!session?.access_token) {
+          console.log('No authentication session found for clips')
+          setClips([])
+          return
+        }
+
+        const headers = {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        }
+
+        const response = await fetch('/api/meetings', { headers })
         
         if (response.ok) {
           const data = await response.json()
@@ -150,11 +161,21 @@ export function ClipsAndBookmarks() {
     if (clip.type === 'meeting') {
       setLoadingInsights(true)
       try {
-        const response = await fetch(`/api/meetings/${clip.id}/insights`, {
-          headers: {
-            'Authorization': 'Bearer mock-token'
-          }
-        })
+        // Get auth headers
+        const { data: { session } } = await supabase.auth.getSession()
+        
+        if (!session?.access_token) {
+          console.log('No authentication session found for insights')
+          setLoadingInsights(false)
+          return
+        }
+
+        const headers = {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        }
+
+        const response = await fetch(`/api/meetings/${clip.id}/insights`, { headers })
         
         if (response.ok) {
           const data = await response.json()

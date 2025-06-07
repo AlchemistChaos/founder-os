@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { supabase } from '@/lib/supabase'
 
 interface TodayActivity {
   id: string
@@ -43,10 +44,22 @@ export function NightlyReview() {
     // Fetch real data from APIs
     const fetchData = async () => {
       try {
+        // Get auth headers
+        const { data: { session } } = await supabase.auth.getSession()
+        
+        if (!session?.access_token) {
+          console.log('No authentication session found for nightly review')
+          setTodayActivities([])
+          return
+        }
+
+        const headers = {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        }
+
         // Fetch today's meetings as activities
-        const meetingsResponse = await fetch('/api/meetings', {
-          headers: { 'Authorization': 'Bearer mock-token' }
-        })
+        const meetingsResponse = await fetch('/api/meetings', { headers })
         if (meetingsResponse.ok) {
           const meetingsData = await meetingsResponse.json()
           const today = new Date().toDateString()

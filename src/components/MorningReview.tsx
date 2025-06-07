@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { supabase } from '@/lib/supabase'
 
 interface FlashcardDue {
   id: string
@@ -70,46 +71,79 @@ export function MorningReview() {
     // Fetch real data from APIs
     const fetchData = async () => {
       try {
-        // Fetch flashcards due today
-        const flashcardsResponse = await fetch('/api/flashcards', {
-          headers: { 'Authorization': 'Bearer mock-token' }
-        })
-        if (flashcardsResponse.ok) {
-          const flashcardsData = await flashcardsResponse.json()
-          const dueFlashcards = flashcardsData.flashcards?.filter((card: any) => 
-            new Date(card.due_at) <= new Date()
-          ).map((card: any) => ({
-            id: card.id,
-            question: card.question,
-            answer: card.answer,
-            tags: []
-          })) || []
-          setFlashcardsDue(dueFlashcards)
+        // Get auth headers similar to insights page
+        const { data: { session } } = await supabase.auth.getSession()
+        
+        const headers = session?.access_token ? {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        } : {
+          'Content-Type': 'application/json'
         }
 
-        // Fetch recent meetings
-        const meetingsResponse = await fetch('/api/meetings', {
-          headers: { 'Authorization': 'Bearer mock-token' }
-        })
-        if (meetingsResponse.ok) {
-          const meetingsData = await meetingsResponse.json()
-          const recentMeetings = meetingsData.meetings?.slice(0, 3).map((meeting: any) => ({
-            id: meeting.id,
-            title: meeting.title,
-            summary: meeting.overview || 'No summary available',
-            insights: meeting.action_items || [],
-            timestamp: meeting.meeting_date
-          })) || []
-          setMeetings(recentMeetings)
+        if (!session?.access_token) {
+          console.log('No authentication session found for morning review, trying without auth...')
+        }
+
+        // Fetch flashcards due today (gracefully handle auth errors)
+        try {
+          const flashcardsResponse = await fetch('/api/flashcards', { headers })
+          if (flashcardsResponse.ok) {
+            const flashcardsData = await flashcardsResponse.json()
+            const dueFlashcards = flashcardsData.flashcards?.filter((card: any) => 
+              new Date(card.due_at) <= new Date()
+            ).map((card: any) => ({
+              id: card.id,
+              question: card.question,
+              answer: card.answer,
+              tags: []
+            })) || []
+            setFlashcardsDue(dueFlashcards)
+          } else {
+            console.log('Flashcards fetch failed:', flashcardsResponse.status)
+          }
+        } catch (error) {
+          console.log('Flashcards fetch error:', error)
+        }
+
+        // Fetch recent meetings (gracefully handle auth errors)
+        try {
+          const meetingsResponse = await fetch('/api/meetings', { headers })
+          if (meetingsResponse.ok) {
+            const meetingsData = await meetingsResponse.json()
+            const recentMeetings = meetingsData.meetings?.slice(0, 3).map((meeting: any) => ({
+              id: meeting.id,
+              title: meeting.title,
+              summary: meeting.overview || 'No summary available',
+              insights: meeting.action_items || [],
+              timestamp: meeting.meeting_date
+            })) || []
+            setMeetings(recentMeetings)
+          } else {
+            console.log('Meetings fetch failed:', meetingsResponse.status)
+          }
+        } catch (error) {
+          console.log('Meetings fetch error:', error)
         }
 
         // Fetch AI insights from our 3-agent pipeline
-        const insightsResponse = await fetch('/api/ai-insights?test=true&limit=5', {
-          headers: { 'Authorization': 'Bearer mock-token' }
-        })
-        if (insightsResponse.ok) {
-          const insightsData = await insightsResponse.json()
-          setAiInsights(insightsData.insights || [])
+        try {
+          let insightsResponse = await fetch('/api/ai-insights?limit=5', { headers })
+          
+          // If auth fails, try test mode as fallback
+          if (!insightsResponse.ok && insightsResponse.status === 401) {
+            console.log('Auth failed for insights, trying test mode...')
+            insightsResponse = await fetch('/api/ai-insights?test=true&limit=5')
+          }
+          
+          if (insightsResponse.ok) {
+            const insightsData = await insightsResponse.json()
+            setAiInsights(insightsData.insights || [])
+          } else {
+            console.log('AI insights fetch failed:', insightsResponse.status)
+          }
+        } catch (error) {
+          console.log('AI insights fetch error:', error)
         }
 
         // Set empty business updates for now (no integration yet)
