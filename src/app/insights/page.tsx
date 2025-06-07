@@ -1,0 +1,365 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { Button } from '@/components/ui/Button'
+import { supabase } from '@/lib/supabase'
+
+interface AIInsight {
+  id: string
+  meeting_id: string
+  meeting_title: string
+  meeting_date: string | null
+  insight_text: string
+  context: string
+  how_to_implement?: string
+  category: string
+  relevance: string
+  priority: 'high' | 'medium' | 'low'
+  priority_reason: string
+  goal_scores: {
+    creator_brand: number
+    pulse_startup: number
+    data_driven: number
+    learning_secrets: number
+    overall: number
+  }
+  has_flashcard: boolean
+  flashcard_id: string | null
+  created_at: string
+  reaction?: boolean
+  interest_level?: string
+}
+
+interface InsightsResponse {
+  success: boolean
+  insights: AIInsight[]
+  stats: {
+    total_insights: number
+    high_priority_count: number
+    medium_priority_count: number
+    low_priority_count: number
+    with_flashcards: number
+    average_score: number
+  }
+  meta: {
+    total: number
+    limit: number
+    page: number
+    total_pages: number
+  }
+}
+
+export default function InsightsPage() {
+  const [insights, setInsights] = useState<AIInsight[]>([])
+  const [stats, setStats] = useState<InsightsResponse['stats'] | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const INSIGHTS_PER_PAGE = 10
+
+  useEffect(() => {
+    fetchInsights(currentPage)
+  }, [currentPage])
+
+  const getAuthHeaders = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.access_token) {
+        return {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    } catch (error) {
+      console.log('No Supabase session found')
+    }
+    
+    return null
+  }
+
+  const fetchInsights = async (page: number) => {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      const headers = await getAuthHeaders()
+      if (!headers) {
+        setError('Please sign in to view AI insights')
+        setLoading(false)
+        return
+      }
+      
+      const response = await fetch(`/api/ai-insights?page=${page}&limit=${INSIGHTS_PER_PAGE}`, {
+        headers
+      })
+      const data: InsightsResponse = await response.json()
+      
+      if (!data.success) {
+        throw new Error('Failed to fetch insights')
+      }
+      
+      setInsights(data.insights)
+      setStats(data.stats)
+      setTotalPages(data.meta.total_pages)
+      
+    } catch (err) {
+      console.error('Error fetching insights:', err)
+      setError('Failed to load AI insights. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page)
+    }
+  }
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'high': return 'bg-red-100 text-red-700'
+      case 'medium': return 'bg-yellow-100 text-yellow-700'
+      case 'low': return 'bg-green-100 text-green-700'
+      default: return 'bg-gray-100 text-gray-700'
+    }
+  }
+
+  const getScoreColor = (score: number) => {
+    if (score >= 30) return 'bg-green-200 text-green-900'
+    if (score >= 20) return 'bg-yellow-200 text-yellow-900'
+    return 'bg-red-200 text-red-900'
+  }
+
+  if (loading && currentPage === 1) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600 mx-auto mb-4"></div>
+          <p className="text-gray-500">Loading AI insights...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center py-8">
+          <p className="text-red-500 mb-4">{error}</p>
+          {error.includes('sign in') ? (
+            <Button onClick={() => window.location.href = '/auth'}>
+              Sign In
+            </Button>
+          ) : (
+            <Button onClick={() => fetchInsights(currentPage)}>
+              Try Again
+            </Button>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      {/* Header */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-3xl font-bold text-gray-900">🤖 AI Meeting Insights</h1>
+          <Button 
+            variant="outline" 
+            onClick={() => window.history.back()}
+          >
+            ← Back
+          </Button>
+        </div>
+        <p className="text-lg text-gray-600">
+          Goal-aligned insights from your meetings generated by the 3-agent pipeline
+        </p>
+      </div>
+
+      {/* Stats Overview */}
+      {stats && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+            <div className="text-2xl font-bold text-blue-900">{stats.total_insights}</div>
+            <div className="text-sm text-blue-700">Total Insights</div>
+          </div>
+          <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+            <div className="text-2xl font-bold text-red-900">{stats.high_priority_count}</div>
+            <div className="text-sm text-red-700">High Priority</div>
+          </div>
+          <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+            <div className="text-2xl font-bold text-purple-900">{stats.with_flashcards}</div>
+            <div className="text-sm text-purple-700">With Flashcards</div>
+          </div>
+          <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+            <div className="text-2xl font-bold text-green-900">{stats.average_score.toFixed(1)}</div>
+            <div className="text-sm text-green-700">Avg Score</div>
+          </div>
+        </div>
+      )}
+
+      {/* Insights List */}
+      {insights.length > 0 ? (
+        <div className="space-y-6 mb-8">
+          {insights.map((insight) => (
+            <div key={insight.id} className="p-6 bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg border border-amber-200">
+              {/* Header */}
+              <div className="flex items-start justify-between mb-4">
+                <h3 className="font-semibold text-amber-900 flex-1 text-lg pr-4">
+                  {insight.insight_text}
+                </h3>
+                <div className="flex items-center space-x-2 flex-shrink-0">
+                  <span className={`px-2 py-1 text-xs rounded-full ${getPriorityColor(insight.priority)}`}>
+                    {insight.priority} priority
+                  </span>
+                  {insight.reaction && (
+                    <span className="px-2 py-1 text-xs bg-pink-100 text-pink-700 rounded-full">
+                      ⚡ High Impact
+                    </span>
+                  )}
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${getScoreColor(insight.goal_scores.overall)}`}>
+                    Score: {insight.goal_scores.overall}/40
+                  </span>
+                </div>
+              </div>
+
+              {/* Context */}
+              <div className="mb-4">
+                <h4 className="text-sm font-medium text-amber-900 mb-2">💬 Context</h4>
+                <p className="text-amber-800 text-sm leading-relaxed bg-white/50 rounded p-3">
+                  {insight.context}
+                </p>
+              </div>
+
+              {/* Implementation Steps */}
+              {insight.how_to_implement && (
+                <div className="mb-4">
+                  <h4 className="text-sm font-medium text-amber-900 mb-2">🛠️ How to Implement</h4>
+                  <div className="text-amber-800 text-sm leading-relaxed bg-white/50 rounded p-3">
+                    {insight.how_to_implement.split(/\d+\./).filter(step => step.trim()).map((step, index) => (
+                      <div key={index} className="mb-2 flex items-start">
+                        <span className="inline-block bg-amber-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center mr-2 mt-0.5 flex-shrink-0">
+                          {index + 1}
+                        </span>
+                        <span>{step.trim()}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Goal Scores Breakdown */}
+              <div className="mb-4">
+                <h4 className="text-sm font-medium text-amber-900 mb-2">🎯 Goal Alignment</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                  <div className="bg-white/50 rounded p-2 text-center">
+                    <div className="font-medium text-amber-900">Creator Brand</div>
+                    <div className="text-amber-700">{insight.goal_scores.creator_brand}/10</div>
+                  </div>
+                  <div className="bg-white/50 rounded p-2 text-center">
+                    <div className="font-medium text-amber-900">Pulse Startup</div>
+                    <div className="text-amber-700">{insight.goal_scores.pulse_startup}/10</div>
+                  </div>
+                  <div className="bg-white/50 rounded p-2 text-center">
+                    <div className="font-medium text-amber-900">Data Driven</div>
+                    <div className="text-amber-700">{insight.goal_scores.data_driven}/10</div>
+                  </div>
+                  <div className="bg-white/50 rounded p-2 text-center">
+                    <div className="font-medium text-amber-900">Learning Secrets</div>
+                    <div className="text-amber-700">{insight.goal_scores.learning_secrets}/10</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="flex items-center justify-between pt-3 border-t border-amber-200">
+                <div className="text-xs text-amber-700">
+                  From: {insight.meeting_title} • {insight.category}
+                  {insight.interest_level && (
+                    <span className="ml-2 px-2 py-1 bg-amber-100 text-amber-700 rounded text-xs">
+                      {insight.interest_level} interest
+                    </span>
+                  )}
+                  <span className="ml-2 text-amber-600">
+                    {new Date(insight.created_at).toLocaleDateString()}
+                  </span>
+                </div>
+                <div className="flex space-x-2">
+                  <Button size="sm" variant="outline">Add Reflection</Button>
+                  {!insight.has_flashcard && (
+                    <Button size="sm" variant="outline">Create Flashcard</Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-8">
+          <p className="text-gray-500 mb-4">No AI insights found.</p>
+          <p className="text-sm text-gray-400">Process meetings through the 3-agent pipeline to generate insights.</p>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1 || loading}
+          >
+            Previous
+          </Button>
+          
+          {Array.from({ length: Math.min(7, totalPages) }, (_, i) => {
+            let pageNum
+            if (totalPages <= 7) {
+              pageNum = i + 1
+            } else if (currentPage <= 4) {
+              pageNum = i + 1
+            } else if (currentPage > totalPages - 4) {
+              pageNum = totalPages - 6 + i
+            } else {
+              pageNum = currentPage - 3 + i
+            }
+            
+            return (
+              <Button
+                key={pageNum}
+                variant={currentPage === pageNum ? "primary" : "outline"}
+                size="sm"
+                onClick={() => handlePageChange(pageNum)}
+                disabled={loading}
+              >
+                {pageNum}
+              </Button>
+            )
+          })}
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages || loading}
+          >
+            Next
+          </Button>
+        </div>
+      )}
+
+      {/* Page Info */}
+      {totalPages > 1 && (
+        <div className="text-center mt-4 text-sm text-gray-500">
+          Page {currentPage} of {totalPages} • Showing {insights.length} of {stats?.total_insights || 0} insights
+        </div>
+      )}
+    </div>
+  )
+} 

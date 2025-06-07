@@ -95,19 +95,21 @@ export default function IntegrationsPage() {
         }
       }
     } catch (error) {
-      console.log('No Supabase session, using mock auth')
+      console.log('No Supabase session found')
     }
     
-    // For development, use a mock token
-    return {
-      'Authorization': `Bearer mock-token`,
-      'Content-Type': 'application/json'
-    }
+    return null
   }
 
   const fetchIntegrations = async () => {
     try {
       const headers = await getAuthHeaders()
+      if (!headers) {
+        console.log('No authentication headers available')
+        setIntegrations([])
+        return
+      }
+      
       const response = await fetch('/api/integrations/auth', { headers })
       
       if (response.ok) {
@@ -130,6 +132,11 @@ export default function IntegrationsPage() {
       setConnecting(service)
       
       const headers = await getAuthHeaders()
+      if (!headers) {
+        alert('Please sign in to connect integrations')
+        return
+      }
+      
       const response = await fetch('/api/integrations/auth', {
         method: 'POST',
         headers,
@@ -158,6 +165,11 @@ export default function IntegrationsPage() {
   const disconnectService = async (integrationId: string) => {
     try {
       const headers = await getAuthHeaders()
+      if (!headers) {
+        alert('Please sign in to manage integrations')
+        return
+      }
+      
       const response = await fetch(`/api/integrations/auth?id=${integrationId}`, {
         method: 'DELETE',
         headers
@@ -178,6 +190,11 @@ export default function IntegrationsPage() {
   const triggerSync = async (integrationId: string) => {
     try {
       const headers = await getAuthHeaders()
+      if (!headers) {
+        alert('Please sign in to sync integrations')
+        return
+      }
+      
       const response = await fetch('/api/integrations/sync', {
         method: 'POST',
         headers,
@@ -203,6 +220,11 @@ export default function IntegrationsPage() {
   const triggerFirefliesSync = async () => {
     try {
       const headers = await getAuthHeaders()
+      if (!headers) {
+        alert('Please sign in to sync Fireflies data')
+        return
+      }
+      
       const response = await fetch('/api/test-fireflies', {
         method: 'POST',
         headers
@@ -224,6 +246,11 @@ export default function IntegrationsPage() {
   const generateFlashcards = async () => {
     try {
       const headers = await getAuthHeaders()
+      if (!headers) {
+        alert('Please sign in to generate flashcards')
+        return
+      }
+      
       const response = await fetch('/api/generate-flashcards', {
         method: 'POST',
         headers,

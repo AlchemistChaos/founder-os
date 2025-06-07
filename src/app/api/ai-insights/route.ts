@@ -13,8 +13,10 @@ export async function GET(request: NextRequest) {
     // Allow testing mode to bypass auth 
     const url = new URL(request.url)
     const isTestMode = url.searchParams.get('test') === 'true'
-    const meetingId = url.searchParams.get('meeting_id') || 'cf2f64db-4648-43ee-afb2-5acf32767888' // Default to Ali meeting for testing
+    const meetingId = url.searchParams.get('meeting_id')
     const limit = parseInt(url.searchParams.get('limit') || '10')
+    const page = parseInt(url.searchParams.get('page') || '1')
+    const offset = (page - 1) * limit
     
     let user
     if (isTestMode) {
@@ -31,6 +33,25 @@ export async function GET(request: NextRequest) {
     // This was causing 90+ second delays and regenerating insights every page load
     // Now we only read from the pre-generated ai_insights table
 
+    // First, get the total count for pagination
+    let countQuery = supabase
+      .from('ai_insights')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+
+    // Filter by specific meeting if provided
+    if (meetingId) {
+      countQuery = countQuery.eq('meeting_id', meetingId)
+    }
+
+    const { count: totalCount, error: countError } = await countQuery
+
+    if (countError) {
+      console.error('Error getting insights count:', countError)
+      return NextResponse.json({ error: 'Database error' }, { status: 500 })
+    }
+
+    // Get the paginated insights
     let query = supabase
       .from('ai_insights')
       .select(`
@@ -67,8 +88,8 @@ export async function GET(request: NextRequest) {
       query = query.eq('meeting_id', meetingId)
     }
 
-    // Limit results
-    query = query.limit(limit)
+    // Apply pagination
+    query = query.range(offset, offset + limit - 1)
 
     const { data: aiInsights, error: insightsError } = await query
 
@@ -108,39 +129,69 @@ export async function GET(request: NextRequest) {
         }
     }) || []
 
+    // Get stats for all insights (not just current page) if we don't have a specific meeting filter
+    let allInsightsForStats = transformedInsights
+    if (!meetingId && totalCount && totalCount > transformedInsights.length) {
+      // For global stats, we need to fetch a sample or use aggregated queries
+      // For now, we'll use the current page data and note this limitation
+      const { data: allInsights } = await supabase
+        .from('ai_insights')
+        .select('priority, goal_overall_score, goal_creator_brand, goal_pulse_startup, goal_data_driven, goal_learning_secrets, is_flashcard')
+        .eq('user_id', user.id)
+        .limit(1000) // Cap at 1000 for performance
+
+      if (allInsights) {
+        allInsightsForStats = allInsights.map(insight => ({
+          priority: insight.priority,
+          goal_scores: {
+            creator_brand: insight.goal_creator_brand,
+            pulse_startup: insight.goal_pulse_startup,
+            data_driven: insight.goal_data_driven,
+            learning_secrets: insight.goal_learning_secrets,
+            overall: insight.goal_overall_score
+          },
+          has_flashcard: insight.is_flashcard
+        })) as any
+      }
+    }
+
     // Calculate summary statistics
     const stats = {
-      total_insights: transformedInsights.length,
-      high_priority_count: transformedInsights.filter(i => i.priority === 'high').length,
-      medium_priority_count: transformedInsights.filter(i => i.priority === 'medium').length,
-      low_priority_count: transformedInsights.filter(i => i.priority === 'low').length,
-      with_flashcards: transformedInsights.filter(i => i.has_flashcard).length,
-      average_score: transformedInsights.length > 0 
-        ? Math.round(transformedInsights.reduce((sum, i) => sum + i.goal_scores.overall, 0) / transformedInsights.length * 10) / 10
+      total_insights: totalCount || 0,
+      high_priority_count: allInsightsForStats.filter(i => i.priority === 'high').length,
+      medium_priority_count: allInsightsForStats.filter(i => i.priority === 'medium').length,
+      low_priority_count: allInsightsForStats.filter(i => i.priority === 'low').length,
+      with_flashcards: allInsightsForStats.filter(i => i.has_flashcard).length,
+      average_score: allInsightsForStats.length > 0 
+        ? Math.round(allInsightsForStats.reduce((sum, i) => sum + i.goal_scores.overall, 0) / allInsightsForStats.length * 10) / 10
         : 0,
       goal_averages: {
-        creator_brand: transformedInsights.length > 0 
-          ? Math.round(transformedInsights.reduce((sum, i) => sum + i.goal_scores.creator_brand, 0) / transformedInsights.length * 10) / 10
+        creator_brand: allInsightsForStats.length > 0 
+          ? Math.round(allInsightsForStats.reduce((sum, i) => sum + i.goal_scores.creator_brand, 0) / allInsightsForStats.length * 10) / 10
           : 0,
-        pulse_startup: transformedInsights.length > 0 
-          ? Math.round(transformedInsights.reduce((sum, i) => sum + i.goal_scores.pulse_startup, 0) / transformedInsights.length * 10) / 10
+        pulse_startup: allInsightsForStats.length > 0 
+          ? Math.round(allInsightsForStats.reduce((sum, i) => sum + i.goal_scores.pulse_startup, 0) / allInsightsForStats.length * 10) / 10
           : 0,
-        data_driven: transformedInsights.length > 0 
-          ? Math.round(transformedInsights.reduce((sum, i) => sum + i.goal_scores.data_driven, 0) / transformedInsights.length * 10) / 10
+        data_driven: allInsightsForStats.length > 0 
+          ? Math.round(allInsightsForStats.reduce((sum, i) => sum + i.goal_scores.data_driven, 0) / allInsightsForStats.length * 10) / 10
           : 0,
-        learning_secrets: transformedInsights.length > 0 
-          ? Math.round(transformedInsights.reduce((sum, i) => sum + i.goal_scores.learning_secrets, 0) / transformedInsights.length * 10) / 10
+        learning_secrets: allInsightsForStats.length > 0 
+          ? Math.round(allInsightsForStats.reduce((sum, i) => sum + i.goal_scores.learning_secrets, 0) / allInsightsForStats.length * 10) / 10
           : 0
       }
     }
+
+    const totalPages = Math.ceil((totalCount || 0) / limit)
 
     return NextResponse.json({
       success: true,
       insights: transformedInsights,
       stats,
       meta: {
-        total: transformedInsights.length,
+        total: totalCount || 0,
         limit,
+        page,
+        total_pages: totalPages,
         meeting_id: meetingId,
         generated_by: '3-agent-pipeline'
       }

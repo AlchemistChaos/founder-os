@@ -268,7 +268,12 @@ export function MorningReview() {
               </div>
             ))}
             <div className="text-center">
-              <Button variant="outline">View All AI Insights</Button>
+              <Button 
+                variant="outline"
+                onClick={() => window.location.href = '/insights'}
+              >
+                View All AI Insights
+              </Button>
             </div>
           </div>
         ) : (

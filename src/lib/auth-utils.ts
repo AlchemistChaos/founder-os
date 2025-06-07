@@ -18,14 +18,6 @@ export async function getUser(request: NextRequest) {
 
   const token = authHeader.split(' ')[1]
   
-  // For development, accept mock token
-  if (token === 'mock-token') {
-    return {
-      id: '04d47b62-bba7-4526-a0f6-42ba34999de1',
-      email: 'test@example.com'
-    }
-  }
-  
   try {
     if (!supabaseAdmin) {
       return null
