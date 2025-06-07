@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { calculateNextReview, ReviewResult, FlashcardStats } from '@/lib/srs'
+import { supabase } from '@/lib/supabase'
 
 interface Flashcard {
   id: string
@@ -36,9 +37,19 @@ export function FlashcardReview() {
     // Fetch real flashcards from database
     const fetchFlashcards = async () => {
       try {
+        // Get auth headers similar to insights page
+        const { data: { session } } = await supabase.auth.getSession()
+        
+        if (!session?.access_token) {
+          console.log('No authentication session found')
+          setFlashcards([])
+          return
+        }
+
         const response = await fetch('/api/flashcards', {
           headers: {
-            'Authorization': 'Bearer mock-token'
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json'
           }
         })
         
@@ -61,6 +72,9 @@ export function FlashcardReview() {
           })) || []
           
           setFlashcards(realFlashcards)
+        } else {
+          console.error('Failed to fetch flashcards:', response.status)
+          setFlashcards([])
         }
       } catch (error) {
         console.error('Error fetching flashcards:', error)

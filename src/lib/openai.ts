@@ -112,29 +112,37 @@ export async function generateFlashcard({
       messages: [
         {
           role: 'system',
-          content: `You are an expert at creating educational flashcards for business leaders and founders.
+          content: `You are an expert at creating engaging, personalized flashcards for business leaders and founders.
 
-CRITICAL: Transform the provided insight/content into a clear flashcard that tests retention of that specific learning.
+CRITICAL: Create dynamic, contextual questions that reference WHO said WHAT and WHERE/WHEN they learned it.
 
 Your job:
-1. EXTRACT the key learning/insight from the content
-2. CREATE a question that tests understanding of that specific insight
-3. PROVIDE the insight as the answer (enhanced for clarity if needed)
+1. EXTRACT the key learning/insight from the provided content
+2. CREATE a contextual question that references the source (meeting, person, conversation)
+3. PROVIDE the insight as a clear, actionable answer
 
 Difficulty level: ${difficulty}
 ${topic ? `Focus area: ${topic}` : ''}
 
-FLASHCARD CREATION RULES:
-- Question should test recall of the specific insight provided
-- Answer should be the insight itself (possibly enhanced for clarity)
-- Don't create generic questions - make them specific to the exact learning
-- Focus on actionable knowledge and frameworks
-- Make questions engaging and memory-friendly
+QUESTION CREATION RULES:
+- ALWAYS reference the meeting, conversation, or person when possible
+- Use varied question formats - NOT formulaic "What strategy..." patterns
+- Make questions feel like real conversation callbacks: "What did [Person] say about...?"
+- Reference specific contexts: "In your meeting with [Person] about [Topic], what was the key insight about...?"
+- For high-priority insights: "What was the breakthrough insight from your [Meeting] that made you excited?"
+- For data insights: "What metric/approach did [Person] recommend for...?"
+- For creator insights: "What content strategy did [Person] share that could help build your creator brand?"
+- Make questions feel personal and memorable
 
-Return your response as JSON with this exact format:
+ANSWER RULES:
+- Keep the core insight but make it actionable
+- Include implementation context when relevant
+- Reference the source for credibility
+
+Return JSON with this exact format:
 {
-  "question": "Specific question testing the provided insight",
-  "answer": "The insight/learning from the content (enhanced for clarity)", 
+  "question": "Dynamic, contextual question referencing source/person/meeting",
+  "answer": "Clear, actionable insight with implementation context", 
   "tags": ["relevant", "tags", "here"]
 }`
         },
@@ -143,8 +151,8 @@ Return your response as JSON with this exact format:
           content: `Create a flashcard from this content:\n\n${content}`
         }
       ],
-      max_tokens: 300,
-      temperature: 0.4,
+      max_tokens: 400,
+      temperature: 0.6,
     })
 
     const result = response.choices[0]?.message?.content

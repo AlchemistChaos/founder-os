@@ -191,6 +191,17 @@ async function createFlashcardFromAIInsight(userId: string, insight: any): Promi
 // Generate question and answer from AI insight using existing AI agents
 async function generateQuestionFromAIInsight(insight: any): Promise<{ question: string, answer: string }> {
   try {
+    // Get meeting context for richer flashcard generation
+    const { data: meeting } = await supabaseAdmin
+      .from('meetings')
+      .select('title, meeting_date')
+      .eq('id', insight.meeting_id)
+      .single()
+
+    // Extract speaker names from context if available
+    const speakers = insight.context ? extractSpeakerNames(insight.context) : []
+    const speakerList = speakers.length > 0 ? speakers.join(', ') : 'the conversation'
+
     // Determine topic based on goal alignment
     let topic = 'business learning'
     if (insight.goal_creator_brand >= 7) {
@@ -211,9 +222,30 @@ async function generateQuestionFromAIInsight(insight: any): Promise<{ question: 
       difficulty = 'beginner'
     }
 
-    // Use your existing AI agent to generate the flashcard
+    // Create rich context for the AI prompt
+    const meetingTitle = meeting?.title || 'your meeting'
+    const meetingDate = meeting?.meeting_date ? new Date(meeting.meeting_date).toLocaleDateString() : ''
+    
+    const enrichedContent = `
+MEETING CONTEXT:
+- Meeting: "${meetingTitle}" ${meetingDate ? `on ${meetingDate}` : ''}
+- Participants/Speakers: ${speakerList}
+- Priority Level: ${insight.priority}
+- Your Reaction: ${insight.reaction ? 'You found this particularly interesting/exciting' : 'Standard insight'}
+
+TRANSCRIPT CONTEXT:
+${insight.context || 'No specific transcript context available'}
+
+KEY INSIGHT:
+${insight.insight_text}
+
+IMPLEMENTATION GUIDANCE:
+${insight.relevance || 'No specific implementation guidance provided'}
+`
+
+    // Use your existing AI agent to generate the flashcard with rich context
     const aiFlashcard = await generateFlashcard({
-      content: insight.insight_text,
+      content: enrichedContent,
       topic,
       difficulty
     })
@@ -226,16 +258,26 @@ async function generateQuestionFromAIInsight(insight: any): Promise<{ question: 
   } catch (error) {
     console.error('AI flashcard generation failed, using fallback:', error)
     
-    // Fallback to simple question if AI fails
+    // Enhanced fallback questions with context
     const fallbackQuestion = insight.reaction 
-      ? `What insight made you react with interest?`
-      : `What key learning should you remember?`
+      ? `What breakthrough insight from your meeting got you excited?`
+      : `What was the key learning from your meeting?`
     
     return {
       question: fallbackQuestion,
       answer: insight.insight_text
     }
   }
+}
+
+// Helper function to extract speaker names from context
+function extractSpeakerNames(context: string): string[] {
+  const speakerPattern = /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*):/g
+  const matches = context.match(speakerPattern)
+  if (!matches) return []
+  
+  const speakers = matches.map(match => match.replace(':', '').trim())
+  return [...new Set(speakers)] // Remove duplicates
 }
 
 // NEW: Enhanced scoring model with goal alignment
