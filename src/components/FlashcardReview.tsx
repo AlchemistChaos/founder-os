@@ -246,24 +246,26 @@ export function FlashcardReview({ theme = 'auto' }: FlashcardReviewProps) {
 
           {/* Flashcard Container */}
           <div 
-            className={`flashcard-container animate-fade-in-up cursor-pointer transition-all duration-300 ${
+            className={`flashcard-container animate-fade-in-up cursor-pointer transition-all duration-300 min-h-[400px] flex flex-col ${
               isFlipping ? 'transform scale-95' : !showAnswer ? 'hover:scale-[1.02] hover:shadow-lg' : ''
             }`}
             onClick={!showAnswer ? handleShowAnswer : undefined}
           >
             {/* Card metadata */}
-            <div className="text-xs subtext mb-4 uppercase tracking-wide">
+            <div className="text-xs subtext mb-4 uppercase tracking-wide flex-shrink-0">
               From: {currentCard.source_meeting_title || 'Meeting'} • {new Date(currentCard.created_at).toLocaleDateString()}
             </div>
 
-            {/* Question */}
-            <div className="flashcard-question">
-              {currentCard.question}
+            {/* Question - Centered when no answer */}
+            <div className={`${!showAnswer ? 'flex-1 flex items-center justify-center' : 'flex-shrink-0'}`}>
+              <div className="flashcard-question">
+                {currentCard.question}
+              </div>
             </div>
 
             {/* Answer + Difficulty or Empty Space */}
             {showAnswer ? (
-              <div className="animate-fade-in-up">
+              <div className="animate-fade-in-up flex-1 flex flex-col justify-center">
                 <div className="text-center mb-6 p-4 rounded-2xl border-2 border-dashed border-green-300 bg-green-50 dark:bg-green-500/10 dark:border-green-500/30">
                   <div className="text-green-700 dark:text-green-300 font-medium">
                     {currentCard.answer}
@@ -301,9 +303,7 @@ export function FlashcardReview({ theme = 'auto' }: FlashcardReviewProps) {
                   </button>
                 </div>
               </div>
-            ) : (
-              <div className="mt-6 h-24"></div>
-            )}
+            ) : null}
           </div>
 
           {/* Next Button */}
