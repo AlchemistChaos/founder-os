@@ -233,15 +233,15 @@ export function FlashcardReview({ theme = 'auto' }: FlashcardReviewProps) {
       </div>
 
       {/* Main Flashcard Area with Side Navigation */}
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-center gap-4 md:gap-8">
+      <div className="max-w-2xl mx-auto">
+        <div className="flex items-center justify-center gap-3">
           {/* Previous Button */}
           <button
             onClick={handlePrevious}
             disabled={currentIndex === 0}
-            className={`btn-secondary touch-target flex-shrink-0 ${currentIndex === 0 ? 'opacity-30 cursor-not-allowed' : 'hover:scale-105'} transition-all duration-200`}
+            className={`btn-secondary touch-target flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center ${currentIndex === 0 ? 'opacity-30 cursor-not-allowed' : 'hover:scale-110'} transition-all duration-200`}
           >
-            <span className="text-xl">←</span>
+            <span className="text-lg">←</span>
           </button>
 
           {/* Flashcard Container */}
@@ -261,15 +261,8 @@ export function FlashcardReview({ theme = 'auto' }: FlashcardReviewProps) {
               {currentCard.question}
             </div>
 
-            {/* Show hint or Answer + Difficulty */}
-            {!showAnswer ? (
-              <div className="text-center mt-6">
-                <div className="text-sm subtext mb-2">
-                  {isFlipping ? 'Revealing answer...' : 'Tap to reveal answer'}
-                </div>
-                <div className="w-12 h-1 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full mx-auto animate-pulse"></div>
-              </div>
-            ) : (
+            {/* Answer + Difficulty or Empty Space */}
+            {showAnswer ? (
               <div className="animate-fade-in-up">
                 <div className="text-center mb-6 p-4 rounded-2xl border-2 border-dashed border-green-300 bg-green-50 dark:bg-green-500/10 dark:border-green-500/30">
                   <div className="text-green-700 dark:text-green-300 font-medium">
@@ -308,20 +301,22 @@ export function FlashcardReview({ theme = 'auto' }: FlashcardReviewProps) {
                   </button>
                 </div>
               </div>
+            ) : (
+              <div className="mt-6 h-24"></div>
             )}
           </div>
 
           {/* Next Button */}
           <button
             onClick={handleNext}
-            disabled={currentIndex === flashcards.length - 1 || !showAnswer}
-            className={`btn-secondary touch-target flex-shrink-0 ${
-              (currentIndex === flashcards.length - 1 || !showAnswer) 
+            disabled={currentIndex === flashcards.length - 1}
+            className={`btn-secondary touch-target flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center ${
+              currentIndex === flashcards.length - 1
                 ? 'opacity-30 cursor-not-allowed' 
-                : 'hover:scale-105'
+                : 'hover:scale-110'
             } transition-all duration-200`}
           >
-            <span className="text-xl">→</span>
+            <span className="text-lg">→</span>
           </button>
         </div>
 
