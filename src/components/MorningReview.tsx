@@ -323,29 +323,6 @@ export function MorningReview() {
           </div>
         )}
       </Card>
-
-      {/* Quick Goal Check-in */}
-      <Card title="🎯 Quick Goal Check-in" subtitle="How are you tracking towards your objectives?">
-        <div className="space-y-4">
-          <div className="p-3 md:p-4 bg-green-50 rounded-lg border border-green-200">
-            <h4 className="font-semibold text-green-900 mb-2 text-sm md:text-base">Q1 Growth Target: 50% MRR increase</h4>
-            <div className="w-full bg-green-200 rounded-full h-2">
-              <div className="bg-green-600 h-2 rounded-full" style={{ width: '70%' }}></div>
-            </div>
-            <p className="text-xs md:text-sm text-green-700 mt-2">70% complete - ahead of schedule!</p>
-          </div>
-          
-          <div className="p-3 md:p-4 bg-orange-50 rounded-lg border border-orange-200">
-            <h4 className="font-semibold text-orange-900 mb-2 text-sm md:text-base">Team Expansion: Hire 5 engineers</h4>
-            <div className="w-full bg-orange-200 rounded-full h-2">
-              <div className="bg-orange-600 h-2 rounded-full" style={{ width: '40%' }}></div>
-            </div>
-            <p className="text-xs md:text-sm text-orange-700 mt-2">2 of 5 hired - need to accelerate recruiting</p>
-          </div>
-          
-          <Button variant="outline" className="w-full text-sm md:text-base">Update Goals</Button>
-        </div>
-      </Card>
     </div>
   )
 }
