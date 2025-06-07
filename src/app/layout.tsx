@@ -1,45 +1,32 @@
-import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import type { Metadata } from "next";
 import "./globals.css";
-import { Navigation } from "@/components/Navigation";
-import { AuthProvider } from "@/components/AuthProvider";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+import { AuthProvider } from '@/components/AuthProvider'
+import { Navigation } from '@/components/Navigation'
 
 export const metadata: Metadata = {
-  title: "Founder OS",
+  title: "FounderOS",
   description: "Daily review tool + knowledge assistant for founders",
+  viewport: "width=device-width, initial-scale=1, maximum-scale=1",
 };
-
-export const viewport: Viewport = {
-  width: 'device-width',
-  initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-}
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50`}
-      >
+    <html lang="en" className="dark">
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+        <meta name="theme-color" content="#121212" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+      </head>
+      <body className="bg-[#121212] text-white font-sans antialiased">
         <AuthProvider>
           <div className="min-h-screen flex flex-col">
             <Navigation />
-            <main className="flex-1 container mx-auto px-4 py-4 md:py-8 max-w-7xl">
+            <main className="flex-1">
               {children}
             </main>
           </div>

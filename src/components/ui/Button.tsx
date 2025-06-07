@@ -1,45 +1,39 @@
-import { ReactNode } from 'react'
+import React from 'react'
 
-interface ButtonProps {
-  children: ReactNode
-  onClick?: () => void
-  variant?: 'primary' | 'secondary' | 'outline'
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: 'primary' | 'secondary' | 'outline' | 'difficulty-easy' | 'difficulty-medium' | 'difficulty-hard'
   size?: 'sm' | 'md' | 'lg'
-  className?: string
-  disabled?: boolean
-  type?: 'button' | 'submit' | 'reset'
+  children: React.ReactNode
 }
 
 export function Button({ 
-  children, 
-  onClick, 
   variant = 'primary', 
   size = 'md', 
+  children, 
   className = '', 
-  disabled = false,
-  type = 'button'
+  ...props 
 }: ButtonProps) {
-  const baseClasses = 'inline-flex items-center justify-center font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed'
+  const baseClasses = 'font-medium rounded-full transition-all duration-200 active:scale-95 touch-target'
   
   const variantClasses = {
-    primary: 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500',
-    secondary: 'bg-gray-600 text-white hover:bg-gray-700 focus:ring-gray-500',
-    outline: 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus:ring-blue-500'
+    primary: 'bg-white text-black hover:bg-gray-100',
+    secondary: 'bg-neutral-800 text-white border border-neutral-700 hover:bg-neutral-700',
+    outline: 'bg-transparent border border-neutral-600 text-neutral-300 hover:bg-neutral-800 hover:text-white',
+    'difficulty-easy': 'bg-green-500/10 border border-green-600 text-green-300 hover:bg-green-500/20',
+    'difficulty-medium': 'bg-yellow-500/10 border border-yellow-600 text-yellow-300 hover:bg-yellow-500/20',
+    'difficulty-hard': 'bg-red-500/10 border border-red-600 text-red-300 hover:bg-red-500/20'
   }
   
   const sizeClasses = {
     sm: 'px-3 py-1.5 text-sm',
-    md: 'px-4 py-2 text-sm',
-    lg: 'px-6 py-3 text-base'
+    md: 'px-4 py-2 text-base',
+    lg: 'px-6 py-3 text-lg'
   }
   
+  const classes = `${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${className}`
+  
   return (
-    <button
-      type={type}
-      onClick={onClick}
-      disabled={disabled}
-      className={`${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
-    >
+    <button className={classes} {...props}>
       {children}
     </button>
   )
