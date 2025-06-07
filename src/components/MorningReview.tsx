@@ -34,6 +34,7 @@ interface AIInsight {
   meeting_date: string | null
   insight_text: string
   context: string
+  how_to_implement?: string
   category: string
   relevance: string
   priority: 'high' | 'medium' | 'low'
@@ -48,6 +49,8 @@ interface AIInsight {
   has_flashcard: boolean
   flashcard_id: string | null
   created_at: string
+  reaction?: boolean
+  interest_level?: string
 }
 
 export function MorningReview() {
@@ -197,9 +200,10 @@ export function MorningReview() {
         ) : aiInsights.length > 0 ? (
           <div className="space-y-4">
             {aiInsights.map((insight) => (
-              <div key={insight.id} className="p-4 bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg border border-amber-200">
-                <div className="flex items-start justify-between mb-2">
-                  <h4 className="font-semibold text-amber-900 flex-1">{insight.insight_text}</h4>
+              <div key={insight.id} className="p-6 bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg border border-amber-200">
+                {/* Header with title and badges */}
+                <div className="flex items-start justify-between mb-4">
+                  <h4 className="font-semibold text-amber-900 flex-1 text-lg">{insight.insight_text}</h4>
                   <div className="flex items-center space-x-2 ml-4">
                     <span className={`px-2 py-1 text-xs rounded-full ${
                       insight.priority === 'high' ? 'bg-red-100 text-red-700' :
@@ -208,46 +212,51 @@ export function MorningReview() {
                     }`}>
                       {insight.priority} priority
                     </span>
-                    {insight.has_flashcard && (
-                      <span className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full">
-                        🎴 Flashcard
+                    {insight.reaction && (
+                      <span className="px-2 py-1 text-xs bg-pink-100 text-pink-700 rounded-full">
+                        ⚡ High Impact
                       </span>
                     )}
-                  </div>
-                </div>
-                
-                <p className="text-amber-800 mb-3 text-sm leading-relaxed">{insight.context.substring(0, 200)}...</p>
-                
-                <div className="space-y-2 mb-3">
-                  <p className="text-xs font-medium text-amber-900">Goal Alignment Scores:</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                    <div className="bg-white rounded p-2 text-center">
-                      <div className="font-medium text-gray-700">Creator</div>
-                      <div className="text-lg font-bold text-blue-600">{insight.goal_scores.creator_brand}/10</div>
-                    </div>
-                    <div className="bg-white rounded p-2 text-center">
-                      <div className="font-medium text-gray-700">Pulse</div>
-                      <div className="text-lg font-bold text-purple-600">{insight.goal_scores.pulse_startup}/10</div>
-                    </div>
-                    <div className="bg-white rounded p-2 text-center">
-                      <div className="font-medium text-gray-700">Data</div>
-                      <div className="text-lg font-bold text-green-600">{insight.goal_scores.data_driven}/10</div>
-                    </div>
-                    <div className="bg-white rounded p-2 text-center">
-                      <div className="font-medium text-gray-700">Learning</div>
-                      <div className="text-lg font-bold text-orange-600">{insight.goal_scores.learning_secrets}/10</div>
-                    </div>
-                  </div>
-                  <div className="text-center">
-                    <span className="inline-block bg-amber-200 text-amber-900 px-3 py-1 rounded-full text-sm font-medium">
-                      Overall Score: {insight.goal_scores.overall}/40
+                    <span className="inline-block bg-amber-200 text-amber-900 px-3 py-1 rounded-full text-xs font-medium">
+                      Score: {insight.goal_scores.overall}/40
                     </span>
                   </div>
                 </div>
                 
-                <div className="flex items-center justify-between">
+                {/* Context section */}
+                <div className="mb-4">
+                  <h5 className="text-sm font-medium text-amber-900 mb-2">💬 Context</h5>
+                  <p className="text-amber-800 text-sm leading-relaxed bg-white/50 rounded p-3">
+                    {insight.context}
+                  </p>
+                </div>
+                
+                {/* How to implement section */}
+                {insight.how_to_implement && (
+                  <div className="mb-4">
+                    <h5 className="text-sm font-medium text-amber-900 mb-2">🛠️ How to Implement</h5>
+                    <div className="text-amber-800 text-sm leading-relaxed bg-white/50 rounded p-3">
+                      {insight.how_to_implement.split(/\d+\./).filter(step => step.trim()).map((step, index) => (
+                        <div key={index} className="mb-2 flex items-start">
+                          <span className="inline-block bg-amber-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center mr-2 mt-0.5 flex-shrink-0">
+                            {index + 1}
+                          </span>
+                          <span>{step.trim()}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Footer */}
+                <div className="flex items-center justify-between pt-3 border-t border-amber-200">
                   <div className="text-xs text-amber-700">
                     From: {insight.meeting_title} • {insight.category}
+                    {insight.interest_level && (
+                      <span className="ml-2 px-2 py-1 bg-amber-100 text-amber-700 rounded text-xs">
+                        {insight.interest_level} interest
+                      </span>
+                    )}
                   </div>
                   <div className="flex space-x-2">
                     <Button size="sm" variant="outline">Add Reflection</Button>
