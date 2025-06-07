@@ -27,76 +27,9 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // For now, let's fetch the enriched insights from the existing meeting insights API
-    // which has the rich how_to_implement data
-    if (isTestMode && meetingId) {
-      try {
-        const insightsResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3001'}/api/meetings/${meetingId}/insights?test=true`)
-        if (insightsResponse.ok) {
-          const insightsData = await insightsResponse.json()
-          
-          // Transform the enriched insights to our expected format
-          const enrichedInsights = insightsData.insights?.slice(0, limit).map((insight: any, index: number) => ({
-            id: `enriched-${index}`,
-            meeting_id: meetingId,
-            meeting_title: 'Meet – River and Ali Sheikh',
-            meeting_date: '2025-06-06T17:05:00+00:00',
-            insight_text: insight.insight,
-            context: insight.context,
-            how_to_implement: insight.how_to_implement,
-            category: insight.category,
-            relevance: insight.relevance,
-            priority: insight.priority,
-            priority_reason: insight.priority_reason,
-            goal_scores: {
-              creator_brand: insight.goal_alignment?.creator_brand || 0,
-              pulse_startup: insight.goal_alignment?.pulse_startup || 0,
-              data_driven: insight.goal_alignment?.data_driven || 0,
-              learning_secrets: insight.goal_alignment?.learning_secrets || 0,
-              overall: insight.goal_alignment?.overall_score || 0
-            },
-            has_flashcard: false,
-            flashcard_id: null,
-            flashcard_created: null,
-            created_at: new Date().toISOString(),
-            reaction: insight.reaction,
-            interest_level: insight.interest_level
-          })) || []
-
-          const stats = {
-            total_insights: enrichedInsights.length,
-            high_priority_count: enrichedInsights.filter((i: any) => i.priority === 'high').length,
-            medium_priority_count: enrichedInsights.filter((i: any) => i.priority === 'medium').length,
-            low_priority_count: enrichedInsights.filter((i: any) => i.priority === 'low').length,
-            with_flashcards: 0,
-            average_score: enrichedInsights.length > 0 
-              ? Math.round(enrichedInsights.reduce((sum: number, i: any) => sum + i.goal_scores.overall, 0) / enrichedInsights.length * 10) / 10
-              : 0,
-            goal_averages: {
-              creator_brand: 0,
-              pulse_startup: 0,
-              data_driven: 0,
-              learning_secrets: 0
-            }
-          }
-
-          return NextResponse.json({
-            success: true,
-            insights: enrichedInsights,
-            stats,
-            meta: {
-              total: enrichedInsights.length,
-              limit,
-              meeting_id: meetingId,
-              generated_by: 'enriched-insights-system'
-            }
-          })
-        }
-      } catch (error) {
-        console.error('Error fetching enriched insights:', error)
-        // Fall back to the original system below
-      }
-    }
+    // REMOVED: No longer calling live AI generation API 
+    // This was causing 90+ second delays and regenerating insights every page load
+    // Now we only read from the pre-generated ai_insights table
 
     let query = supabase
       .from('ai_insights')
@@ -144,7 +77,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Database error' }, { status: 500 })
     }
 
-    // Transform the data for frontend consumption
+        // Transform the data for frontend consumption
     const transformedInsights = aiInsights?.map(insight => {
       const meeting = insight.meetings as any
       return {
@@ -152,24 +85,27 @@ export async function GET(request: NextRequest) {
         meeting_id: insight.meeting_id,
         meeting_title: meeting?.title || 'Unknown Meeting',
         meeting_date: meeting?.meeting_date || null,
-      insight_text: insight.insight_text,
-      context: insight.context,
-      category: insight.category,
-      relevance: insight.relevance,
-      priority: insight.priority,
-      priority_reason: insight.priority_reason,
-      goal_scores: {
-        creator_brand: insight.goal_creator_brand,
-        pulse_startup: insight.goal_pulse_startup,
-        data_driven: insight.goal_data_driven,
-        learning_secrets: insight.goal_learning_secrets,
-        overall: insight.goal_overall_score
-      },
-      has_flashcard: insight.is_flashcard,
-      flashcard_id: insight.flashcard_id,
-      flashcard_created: insight.flashcard_created_at,
-      created_at: insight.created_at
-      }
+        insight_text: insight.insight_text,
+        context: insight.context,
+        // For now, use relevance field as how_to_implement until we add that column
+        how_to_implement: insight.relevance || 'Implementation guidance not available',
+        category: insight.category,
+        relevance: insight.relevance,
+        priority: insight.priority,
+        priority_reason: insight.priority_reason,
+        goal_scores: {
+          creator_brand: insight.goal_creator_brand,
+          pulse_startup: insight.goal_pulse_startup,
+          data_driven: insight.goal_data_driven,
+          learning_secrets: insight.goal_learning_secrets,
+          overall: insight.goal_overall_score
+        },
+        has_flashcard: insight.is_flashcard,
+        flashcard_id: insight.flashcard_id,
+        flashcard_created: insight.flashcard_created_at,
+        created_at: insight.created_at
+        // Note: reaction and interest_level fields don't exist in ai_insights table yet
+        }
     }) || []
 
     // Calculate summary statistics
