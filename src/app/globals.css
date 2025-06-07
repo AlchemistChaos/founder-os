@@ -7,12 +7,12 @@
 /* Tailwind v4 Theme Configuration */
 @theme {
   /* Light Theme (Morning Review) */
-  --color-light-background: #FAFAFA;
+  --color-light-background: #FFFFFF;
   --color-light-card: #FFFFFF;
-  --color-light-text-primary: #171717;
-  --color-light-text-secondary: #737373;
-  --color-light-border: #E5E5E5;
-  --color-light-border-card: #E5E5E5;
+  --color-light-text-primary: #000000;
+  --color-light-text-secondary: #6B7280;
+  --color-light-border: #E5E7EB;
+  --color-light-border-card: #E5E7EB;
   
   /* Dark Theme (Nightly Review) */
   --color-dark-background: #121212;
@@ -51,8 +51,8 @@ body {
 
 .theme-light .card-container {
   background-color: var(--color-light-card);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  border-radius: 1rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+  border-radius: 0.75rem;
   padding: 1.5rem;
   border: 1px solid var(--color-light-border-card);
 }
@@ -183,6 +183,16 @@ body {
   height: 100%;
   background: var(--color-gradient-morning);
   transition: width 0.3s ease-out;
+}
+
+.theme-light .confidence-badge {
+  background-color: #D1FAE5;
+  color: #065F46;
+  border: 1px solid #A7F3D0;
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
 }
 
 /* Dark theme classes for Nightly Review */
@@ -326,12 +336,17 @@ body {
 
 /* Shared component styles */
 .btn-primary {
-  background-color: white;
-  color: black;
+  background-color: #000000;
+  color: white;
   font-weight: 600;
   padding: 0.75rem 1.5rem;
   border-radius: 9999px;
+  border: none;
   transition: all 0.15s ease-in-out;
+}
+
+.btn-primary:hover {
+  background-color: #1F2937;
 }
 
 .btn-primary:active {
@@ -339,17 +354,18 @@ body {
 }
 
 .btn-secondary {
-  background-color: #F5F5F5;
-  color: black;
-  border: 1px solid #D4D4D4;
+  background-color: transparent;
+  color: #6B7280;
+  border: 1px solid #D1D5DB;
   font-weight: 500;
-  padding: 0.5rem 1rem;
+  padding: 0.75rem 1.5rem;
   border-radius: 9999px;
   transition: all 0.15s ease-in-out;
 }
 
 .btn-secondary:hover {
-  background-color: #E5E5E5;
+  background-color: #F9FAFB;
+  color: #374151;
 }
 
 .btn-secondary:active {
