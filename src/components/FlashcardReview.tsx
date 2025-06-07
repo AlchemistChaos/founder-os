@@ -234,19 +234,19 @@ export function FlashcardReview({ theme = 'auto' }: FlashcardReviewProps) {
 
       {/* Main Flashcard Area with Side Navigation */}
       <div className="max-w-2xl mx-auto">
-        <div className="flex items-center justify-center gap-3">
+        <div className="flex items-start justify-center gap-3">
           {/* Previous Button */}
           <button
             onClick={handlePrevious}
             disabled={currentIndex === 0}
-            className={`btn-secondary touch-target flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center ${currentIndex === 0 ? 'opacity-30 cursor-not-allowed' : 'hover:scale-110'} transition-all duration-200`}
+            className={`btn-secondary touch-target flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center mt-[200px] ${currentIndex === 0 ? 'opacity-30 cursor-not-allowed' : 'hover:scale-110'} transition-all duration-200`}
           >
             <span className="text-lg">←</span>
           </button>
 
           {/* Flashcard Container */}
           <div 
-            className={`flashcard-container animate-fade-in-up cursor-pointer transition-all duration-300 min-h-[400px] flex flex-col ${
+            className={`flashcard-container animate-fade-in-up cursor-pointer transition-all duration-300 h-[400px] flex flex-col ${
               isFlipping ? 'transform scale-95' : !showAnswer ? 'hover:scale-[1.02] hover:shadow-lg' : ''
             }`}
             onClick={!showAnswer ? handleShowAnswer : undefined}
@@ -310,7 +310,7 @@ export function FlashcardReview({ theme = 'auto' }: FlashcardReviewProps) {
           <button
             onClick={handleNext}
             disabled={currentIndex === flashcards.length - 1}
-            className={`btn-secondary touch-target flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center ${
+            className={`btn-secondary touch-target flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center mt-[200px] ${
               currentIndex === flashcards.length - 1
                 ? 'opacity-30 cursor-not-allowed' 
                 : 'hover:scale-110'
