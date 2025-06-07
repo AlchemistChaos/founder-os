@@ -27,10 +27,35 @@ interface Meeting {
   timestamp: string
 }
 
+interface AIInsight {
+  id: string
+  meeting_id: string
+  meeting_title: string
+  meeting_date: string | null
+  insight_text: string
+  context: string
+  category: string
+  relevance: string
+  priority: 'high' | 'medium' | 'low'
+  priority_reason: string
+  goal_scores: {
+    creator_brand: number
+    pulse_startup: number
+    data_driven: number
+    learning_secrets: number
+    overall: number
+  }
+  has_flashcard: boolean
+  flashcard_id: string | null
+  created_at: string
+}
+
 export function MorningReview() {
   const [flashcardsDue, setFlashcardsDue] = useState<FlashcardDue[]>([])
   const [businessUpdates, setBusinessUpdates] = useState<BusinessUpdate[]>([])
   const [meetings, setMeetings] = useState<Meeting[]>([])
+  const [aiInsights, setAiInsights] = useState<AIInsight[]>([])
+  const [insightsLoading, setInsightsLoading] = useState(true)
   const [currentDate] = useState(new Date().toLocaleDateString('en-US', { 
     weekday: 'long', 
     year: 'numeric', 
@@ -75,11 +100,22 @@ export function MorningReview() {
           setMeetings(recentMeetings)
         }
 
+        // Fetch AI insights from our 3-agent pipeline
+        const insightsResponse = await fetch('/api/ai-insights?test=true&limit=5', {
+          headers: { 'Authorization': 'Bearer mock-token' }
+        })
+        if (insightsResponse.ok) {
+          const insightsData = await insightsResponse.json()
+          setAiInsights(insightsData.insights || [])
+        }
+
         // Set empty business updates for now (no integration yet)
         setBusinessUpdates([])
         
       } catch (error) {
         console.error('Error fetching morning review data:', error)
+      } finally {
+        setInsightsLoading(false)
       }
     }
     
@@ -151,30 +187,87 @@ export function MorningReview() {
         </div>
       </Card>
 
-      {/* Meeting Summaries */}
-      <Card title="🤝 Meeting Insights" subtitle="Key takeaways from recent meetings">
-        <div className="space-y-4">
-          {meetings.map((meeting) => (
-            <div key={meeting.id} className="p-4 bg-amber-50 rounded-lg border border-amber-200">
-              <h4 className="font-semibold text-amber-900 mb-2">{meeting.title}</h4>
-              <p className="text-amber-800 mb-3">{meeting.summary}</p>
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-amber-900">Key Insights:</p>
-                <ul className="space-y-1">
-                  {meeting.insights.map((insight, index) => (
-                    <li key={index} className="text-sm text-amber-800 flex items-start">
-                      <span className="mr-2">•</span>
-                      {insight}
-                    </li>
-                  ))}
-                </ul>
+      {/* AI-Generated Insights */}
+      <Card title="🤖 AI Meeting Insights" subtitle="Goal-aligned insights from your recent meetings (3-agent pipeline)">
+        {insightsLoading ? (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600 mx-auto mb-4"></div>
+            <p className="text-gray-500">Loading AI insights...</p>
+          </div>
+        ) : aiInsights.length > 0 ? (
+          <div className="space-y-4">
+            {aiInsights.map((insight) => (
+              <div key={insight.id} className="p-4 bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg border border-amber-200">
+                <div className="flex items-start justify-between mb-2">
+                  <h4 className="font-semibold text-amber-900 flex-1">{insight.insight_text}</h4>
+                  <div className="flex items-center space-x-2 ml-4">
+                    <span className={`px-2 py-1 text-xs rounded-full ${
+                      insight.priority === 'high' ? 'bg-red-100 text-red-700' :
+                      insight.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                      'bg-green-100 text-green-700'
+                    }`}>
+                      {insight.priority} priority
+                    </span>
+                    {insight.has_flashcard && (
+                      <span className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full">
+                        🎴 Flashcard
+                      </span>
+                    )}
+                  </div>
+                </div>
+                
+                <p className="text-amber-800 mb-3 text-sm leading-relaxed">{insight.context.substring(0, 200)}...</p>
+                
+                <div className="space-y-2 mb-3">
+                  <p className="text-xs font-medium text-amber-900">Goal Alignment Scores:</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                    <div className="bg-white rounded p-2 text-center">
+                      <div className="font-medium text-gray-700">Creator</div>
+                      <div className="text-lg font-bold text-blue-600">{insight.goal_scores.creator_brand}/10</div>
+                    </div>
+                    <div className="bg-white rounded p-2 text-center">
+                      <div className="font-medium text-gray-700">Pulse</div>
+                      <div className="text-lg font-bold text-purple-600">{insight.goal_scores.pulse_startup}/10</div>
+                    </div>
+                    <div className="bg-white rounded p-2 text-center">
+                      <div className="font-medium text-gray-700">Data</div>
+                      <div className="text-lg font-bold text-green-600">{insight.goal_scores.data_driven}/10</div>
+                    </div>
+                    <div className="bg-white rounded p-2 text-center">
+                      <div className="font-medium text-gray-700">Learning</div>
+                      <div className="text-lg font-bold text-orange-600">{insight.goal_scores.learning_secrets}/10</div>
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <span className="inline-block bg-amber-200 text-amber-900 px-3 py-1 rounded-full text-sm font-medium">
+                      Overall Score: {insight.goal_scores.overall}/40
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div className="text-xs text-amber-700">
+                    From: {insight.meeting_title} • {insight.category}
+                  </div>
+                  <div className="flex space-x-2">
+                    <Button size="sm" variant="outline">Add Reflection</Button>
+                    {!insight.has_flashcard && (
+                      <Button size="sm" variant="outline">Create Flashcard</Button>
+                    )}
+                  </div>
+                </div>
               </div>
-              <div className="mt-3 flex space-x-2">
-                <Button size="sm" variant="outline">Add Reflection</Button>
-              </div>
+            ))}
+            <div className="text-center">
+              <Button variant="outline">View All AI Insights</Button>
             </div>
-          ))}
-        </div>
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-gray-500 mb-4">No AI insights available yet.</p>
+            <p className="text-sm text-gray-400">Process meetings through the 3-agent pipeline to see insights here.</p>
+          </div>
+        )}
       </Card>
 
       {/* Quick Goal Check-in */}
