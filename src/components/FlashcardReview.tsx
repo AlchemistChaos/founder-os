@@ -217,7 +217,7 @@ export function FlashcardReview({ theme = 'auto' }: FlashcardReviewProps) {
   return (
     <div className={`${themeClass} min-h-screen p-4`}>
       {/* Progress Header */}
-      <div className="max-w-md mx-auto mb-6 animate-fade-in-up">
+      <div className="max-w-4xl mx-auto mb-6 animate-fade-in-up">
         <div className="flex justify-between items-center mb-2">
           <h1 className="header-text">📚 Flashcard Review</h1>
           <span className="text-sm subtext">
@@ -232,81 +232,105 @@ export function FlashcardReview({ theme = 'auto' }: FlashcardReviewProps) {
         </div>
       </div>
 
-      {/* Flashcard Container */}
-      <div className={`flashcard-container animate-fade-in-up ${isFlipping ? 'transform scale-95 transition-transform duration-300' : ''}`}>
-        {/* Card metadata */}
-        <div className="text-xs subtext mb-4 uppercase tracking-wide">
-          From: {currentCard.source_meeting_title || 'Meeting'} • {new Date(currentCard.created_at).toLocaleDateString()}
-        </div>
-
-        {/* Question */}
-        <div className="flashcard-question">
-          {currentCard.question}
-        </div>
-
-        {/* Show Answer Button or Answer + Difficulty */}
-        {!showAnswer ? (
-          <button 
-            onClick={handleShowAnswer}
-            className="btn-show-answer mx-auto block touch-target"
-            disabled={isFlipping}
+      {/* Main Flashcard Area with Side Navigation */}
+      <div className="max-w-4xl mx-auto">
+        <div className="flex items-center justify-center gap-4 md:gap-8">
+          {/* Previous Button */}
+          <button
+            onClick={handlePrevious}
+            disabled={currentIndex === 0}
+            className={`btn-secondary touch-target flex-shrink-0 ${currentIndex === 0 ? 'opacity-30 cursor-not-allowed' : 'hover:scale-105'} transition-all duration-200`}
           >
-            {isFlipping ? 'Revealing...' : 'Show Answer'}
+            <span className="text-xl">←</span>
           </button>
-        ) : (
-          <div className="animate-fade-in-up">
-            <div className="text-center mb-6 p-4 rounded-2xl border-2 border-dashed border-green-300 bg-green-50 dark:bg-green-500/10 dark:border-green-500/30">
-              <div className="text-green-700 dark:text-green-300 font-medium">
-                {currentCard.answer}
-              </div>
-            </div>
-            
-            {/* Difficulty Buttons */}
-            <div className="grid grid-cols-3 gap-3">
-              <button 
-                onClick={() => handleDifficultyRating('hard')}
-                className="btn-difficulty-hard touch-target flex items-center justify-center gap-2"
-              >
-                <span>😓</span> Hard
-              </button>
-              <button 
-                onClick={() => handleDifficultyRating('medium')}
-                className="btn-difficulty-medium touch-target flex items-center justify-center gap-2"
-              >
-                <span>🤔</span> Medium
-              </button>
-              <button 
-                onClick={() => handleDifficultyRating('easy')}
-                className="btn-difficulty-easy touch-target flex items-center justify-center gap-2"
-              >
-                <span>😊</span> Easy
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
 
-      {/* Navigation */}
-      <div className="max-w-md mx-auto mt-6 flex justify-between items-center">
-        <button
-          onClick={handlePrevious}
-          disabled={currentIndex === 0}
-          className={`btn-secondary touch-target ${currentIndex === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          ← Previous
-        </button>
-        
-        <span className="text-sm subtext">
-          {currentIndex + 1} of {flashcards.length}
-        </span>
-        
-        <button
-          onClick={handleNext}
-          disabled={currentIndex === flashcards.length - 1 || !showAnswer}
-          className={`btn-secondary touch-target ${(currentIndex === flashcards.length - 1 || !showAnswer) ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          Next →
-        </button>
+          {/* Flashcard Container */}
+          <div 
+            className={`flashcard-container animate-fade-in-up cursor-pointer transition-all duration-300 ${
+              isFlipping ? 'transform scale-95' : !showAnswer ? 'hover:scale-[1.02] hover:shadow-lg' : ''
+            }`}
+            onClick={!showAnswer ? handleShowAnswer : undefined}
+          >
+            {/* Card metadata */}
+            <div className="text-xs subtext mb-4 uppercase tracking-wide">
+              From: {currentCard.source_meeting_title || 'Meeting'} • {new Date(currentCard.created_at).toLocaleDateString()}
+            </div>
+
+            {/* Question */}
+            <div className="flashcard-question">
+              {currentCard.question}
+            </div>
+
+            {/* Show hint or Answer + Difficulty */}
+            {!showAnswer ? (
+              <div className="text-center mt-6">
+                <div className="text-sm subtext mb-2">
+                  {isFlipping ? 'Revealing answer...' : 'Tap to reveal answer'}
+                </div>
+                <div className="w-12 h-1 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full mx-auto animate-pulse"></div>
+              </div>
+            ) : (
+              <div className="animate-fade-in-up">
+                <div className="text-center mb-6 p-4 rounded-2xl border-2 border-dashed border-green-300 bg-green-50 dark:bg-green-500/10 dark:border-green-500/30">
+                  <div className="text-green-700 dark:text-green-300 font-medium">
+                    {currentCard.answer}
+                  </div>
+                </div>
+                
+                {/* Difficulty Buttons */}
+                <div className="grid grid-cols-3 gap-3">
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleDifficultyRating('hard')
+                    }}
+                    className="btn-difficulty-hard touch-target flex items-center justify-center gap-2"
+                  >
+                    <span>😓</span> Hard
+                  </button>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleDifficultyRating('medium')
+                    }}
+                    className="btn-difficulty-medium touch-target flex items-center justify-center gap-2"
+                  >
+                    <span>🤔</span> Medium
+                  </button>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleDifficultyRating('easy')
+                    }}
+                    className="btn-difficulty-easy touch-target flex items-center justify-center gap-2"
+                  >
+                    <span>😊</span> Easy
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Next Button */}
+          <button
+            onClick={handleNext}
+            disabled={currentIndex === flashcards.length - 1 || !showAnswer}
+            className={`btn-secondary touch-target flex-shrink-0 ${
+              (currentIndex === flashcards.length - 1 || !showAnswer) 
+                ? 'opacity-30 cursor-not-allowed' 
+                : 'hover:scale-105'
+            } transition-all duration-200`}
+          >
+            <span className="text-xl">→</span>
+          </button>
+        </div>
+
+        {/* Card Counter */}
+        <div className="text-center mt-6">
+          <span className="text-sm subtext">
+            {currentIndex + 1} of {flashcards.length}
+          </span>
+        </div>
       </div>
 
       {/* Completion State */}
