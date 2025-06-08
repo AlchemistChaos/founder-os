@@ -149,7 +149,13 @@ export default function IntegrationsPage() {
       } else {
         const error = await response.json()
         if (error.error.includes('Demo mode')) {
-          alert(`Demo Mode: To test integrations, you need to:\n\n1. Set up OAuth apps with each service (Slack, Linear, Google, Fireflies)\n2. Add the OAuth credentials to your .env file\n3. Configure webhook URLs in each service\n\nSee the .env.example file for required environment variables.`)
+          if (service === 'linear') {
+            if (confirm(`Demo Mode: Linear integration requires OAuth setup.\n\nWould you like to see the setup guide?`)) {
+              window.location.href = '/integrations/linear/setup'
+            }
+          } else {
+            alert(`Demo Mode: To test integrations, you need to:\n\n1. Set up OAuth apps with each service (Slack, Linear, Google, Fireflies)\n2. Add the OAuth credentials to your .env file\n3. Configure webhook URLs in each service\n\nSee the .env.example file for required environment variables.`)
+          }
         } else {
           alert(`Error: ${error.error}`)
         }
@@ -387,6 +393,16 @@ export default function IntegrationsPage() {
                     >
                       Sync Now
                     </Button>
+                    {service === 'linear' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => window.location.href = '/integrations/linear'}
+                        className="text-xs sm:text-sm"
+                      >
+                        Manage
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"

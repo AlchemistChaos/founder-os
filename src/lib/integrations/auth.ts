@@ -36,7 +36,7 @@ const OAUTH_CONFIGS: Record<IntegrationType, OAuthConfig> = {
     clientId: process.env.LINEAR_CLIENT_ID || 'demo-client-id',
     clientSecret: process.env.LINEAR_CLIENT_SECRET || 'demo-client-secret',
     redirectUri: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/integrations/linear/callback`,
-    scopes: ['read'],
+    scopes: ['read', 'write', 'issues:create', 'comments:create'],
     authUrl: 'https://linear.app/oauth/authorize',
     tokenUrl: 'https://api.linear.app/oauth/token'
   }
@@ -60,6 +60,11 @@ export function buildAuthUrl(service: IntegrationType, state: string): string {
   if (service === 'google') {
     params.append('access_type', 'offline')
     params.append('prompt', 'consent')
+  }
+
+  if (service === 'linear') {
+    params.append('actor', 'user') // Resources created as the user who authorized
+    params.append('prompt', 'consent') // Always show consent screen
   }
 
   return `${config.authUrl}?${params.toString()}`
