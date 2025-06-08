@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import React from 'react'
 
 interface FlashcardDue {
   id: string
@@ -97,7 +98,7 @@ interface Task {
   milestone_title?: string // Added for weekly/active task views
 }
 
-export function MorningReview() {
+export const MorningReview = React.memo(function MorningReview() {
   const [flashcardsDue, setFlashcardsDue] = useState<FlashcardDue[]>([])
   const [businessUpdates, setBusinessUpdates] = useState<BusinessUpdate[]>([])
   const [meetings, setMeetings] = useState<Meeting[]>([])
@@ -120,6 +121,203 @@ export function MorningReview() {
   const [taskStatusFilter, setTaskStatusFilter] = useState('all')
   const [weeklyTasks, setWeeklyTasks] = useState<{[key: string]: Task[]}>({})
   const [activeTasks, setActiveTasks] = useState<Task[]>([])
+
+  // Helper functions moved to bottom of component to avoid duplication
+
+  // Note: Removed useMemo calls to fix initialization order issues
+
+  // Memoize API calls
+  const fetchData = useCallback(async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      const headers = session?.access_token ? {
+        'Authorization': `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json'
+      } : {
+        'Content-Type': 'application/json'
+      }
+
+      if (!session?.access_token) {
+      }
+
+      // Fetch flashcards due today (gracefully handle auth errors)
+      try {
+        const flashcardsResponse = await fetch('/api/flashcards', { headers })
+        if (flashcardsResponse.ok) {
+          const flashcardsData = await flashcardsResponse.json()
+          const dueFlashcards = flashcardsData.flashcards?.filter((card: any) => 
+            new Date(card.due_at) <= new Date()
+          ).map((card: any) => ({
+            id: card.id,
+            question: card.question,
+            answer: card.answer,
+            tags: []
+          })) || []
+          setFlashcardsDue(dueFlashcards)
+        } else {
+        }
+      } catch (error) {
+      }
+
+      // Define available teams (matching Linear teams)
+      const teams: Team[] = [
+        { id: 'mar', name: 'Marketing+Community', color: 'bg-blue-100 text-blue-800 border-blue-200', icon: '📢', key: 'MAR' },
+        { id: 'eng', name: 'Engineering', color: 'bg-purple-100 text-purple-800 border-purple-200', icon: '⚙️', key: 'ENG' },
+        { id: 'product', name: 'Product', color: 'bg-green-100 text-green-800 border-green-200', icon: '🎯', key: 'PROD' },
+        { id: 'design', name: 'Design', color: 'bg-pink-100 text-pink-800 border-pink-200', icon: '🎨', key: 'DES' },
+        { id: 'biz', name: 'Business', color: 'bg-orange-100 text-orange-800 border-orange-200', icon: '💼', key: 'BIZ' },
+        { id: 'ops', name: 'Operations', color: 'bg-yellow-100 text-yellow-800 border-yellow-200', icon: '⚡', key: 'OPS' }
+      ]
+      setAvailableTeams(teams)
+
+      // Set default selected teams if none are saved
+      if (selectedTeams.length === 0) {
+        const defaultTeams = ['mar', 'eng', 'product']
+        setSelectedTeams(defaultTeams)
+        setActiveTab('mar')
+      } else {
+        setActiveTab(selectedTeams[0] || 'all')
+      }
+
+      // Fetch real milestones from Linear Summer Launch project
+      try {
+        const milestonesResponse = await fetch('/api/integrations/linear/milestones', { headers })
+        if (milestonesResponse.ok) {
+          const milestonesData = await milestonesResponse.json()
+          if (milestonesData.success) {
+            // Transform Linear milestones to match our interface
+            const linearMilestones: Milestone[] = milestonesData.milestones.map((milestone: any) => ({
+              id: milestone.id,
+              title: milestone.title,
+              description: milestone.description,
+              due_date: milestone.due_date,
+              status: milestone.status,
+              priority: milestone.priority,
+              cycle: milestone.cycle,
+              team_id: milestone.team.key.toLowerCase(),
+              team: {
+                id: milestone.team.key.toLowerCase(),
+                name: milestone.team.name,
+                key: milestone.team.key,
+                icon: milestone.team.icon,
+                color: getTeamColor(milestone.team.key)
+              },
+              tasks: milestone.tasks.map((task: any) => ({
+                id: task.id,
+                title: task.title,
+                status: mapLinearStatusToLocal(task.status),
+                priority: mapLinearPriorityToLocal(task.priority),
+                cycle: milestone.cycle,
+                assignee: task.assignee,
+                due_date: task.due_date,
+                url: task.url,
+                created_at: milestone.created_at
+              })),
+              progress: milestone.progress,
+              progress_percentage: milestone.progress,
+              created_at: milestone.created_at,
+              updated_at: milestone.updated_at,
+              overdue: milestone.overdue,
+              project: milestone.project
+            }))
+            setMilestones(linearMilestones)
+            // Debug: Log all tasks and their due dates
+            linearMilestones.forEach(milestone => {
+              milestone.tasks.forEach(task => {
+              })
+            })
+            
+            // Set weekly tasks and active tasks without due dates
+            const weeklyTasksResult = getWeeklyTasks(linearMilestones)
+            const activeTasksResult = getActiveTasksWithoutDueDates(linearMilestones)
+            
+            
+            setWeeklyTasks(weeklyTasksResult)
+            setActiveTasks(activeTasksResult)
+          } else {
+            // Fallback to empty milestones
+            setMilestones([])
+            setWeeklyTasks({})
+            setActiveTasks([])
+          }
+        } else {
+          // Fallback to empty milestones  
+          setMilestones([])
+        }
+      } catch (error) {
+        // Fallback to empty milestones
+        setMilestones([])
+      } finally {
+        setMilestonesLoading(false)
+      }
+
+      // Fetch recent meetings (gracefully handle auth errors)
+      try {
+        const meetingsResponse = await fetch('/api/meetings', { headers })
+        if (meetingsResponse.ok) {
+          const meetingsData = await meetingsResponse.json()
+          const recentMeetings = meetingsData.meetings?.slice(0, 3).map((meeting: any) => ({
+            id: meeting.id,
+            title: meeting.title,
+            summary: meeting.overview || 'No summary available',
+            insights: meeting.action_items || [],
+            timestamp: meeting.meeting_date
+          })) || []
+          setMeetings(recentMeetings)
+        } else {
+        }
+      } catch (error) {
+      }
+
+      // Fetch AI insights from our 3-agent pipeline
+      try {
+        let insightsResponse = await fetch('/api/ai-insights?limit=5', { headers })
+        
+        if (!insightsResponse.ok && insightsResponse.status === 401) {
+          insightsResponse = await fetch('/api/ai-insights?test=true&limit=5')
+        }
+        
+        if (insightsResponse.ok) {
+          const insightsData = await insightsResponse.json()
+          setAiInsights(insightsData.insights || [])
+        } else {
+        }
+      } catch (error) {
+      }
+
+      setBusinessUpdates([])
+      
+    } catch (error) {
+      console.error('Error fetching morning review data:', error)
+    } finally {
+      setInsightsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
+
+  // Memoize event handlers
+  const handleTeamToggle = useCallback((teamId: string) => {
+    setSelectedTeams(prev => {
+      if (prev.includes(teamId)) {
+        const newTeams = prev.filter(id => id !== teamId)
+        // If removing the active tab, switch to first available tab or 'all'
+        if (activeTab === teamId) {
+          setActiveTab(newTeams.length > 0 ? newTeams[0] : 'all')
+        }
+        return newTeams
+      } else {
+        return [...prev, teamId]
+      }
+    })
+  }, [selectedTeams, activeTab])
+
+  const handleInsightAction = useCallback((insightId: string, action: 'star' | 'flashcard' | 'view') => {
+    // TODO: Implement insight actions
+  }, [])
 
   // Helper functions for Linear data transformation
   const getTeamColor = (teamKey: string) => {
@@ -320,182 +518,6 @@ export function MorningReview() {
     localStorage.setItem('selectedTeams', JSON.stringify(selectedTeams))
   }, [selectedTeams])
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-        
-        const headers = session?.access_token ? {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json'
-        } : {
-          'Content-Type': 'application/json'
-        }
-
-        if (!session?.access_token) {
-        }
-
-        // Fetch flashcards due today (gracefully handle auth errors)
-        try {
-          const flashcardsResponse = await fetch('/api/flashcards', { headers })
-          if (flashcardsResponse.ok) {
-            const flashcardsData = await flashcardsResponse.json()
-            const dueFlashcards = flashcardsData.flashcards?.filter((card: any) => 
-              new Date(card.due_at) <= new Date()
-            ).map((card: any) => ({
-              id: card.id,
-              question: card.question,
-              answer: card.answer,
-              tags: []
-            })) || []
-            setFlashcardsDue(dueFlashcards)
-          } else {
-          }
-        } catch (error) {
-        }
-
-        // Define available teams (matching Linear teams)
-        const teams: Team[] = [
-          { id: 'mar', name: 'Marketing+Community', color: 'bg-blue-100 text-blue-800 border-blue-200', icon: '📢', key: 'MAR' },
-          { id: 'eng', name: 'Engineering', color: 'bg-purple-100 text-purple-800 border-purple-200', icon: '⚙️', key: 'ENG' },
-          { id: 'product', name: 'Product', color: 'bg-green-100 text-green-800 border-green-200', icon: '🎯', key: 'PROD' },
-          { id: 'design', name: 'Design', color: 'bg-pink-100 text-pink-800 border-pink-200', icon: '🎨', key: 'DES' },
-          { id: 'biz', name: 'Business', color: 'bg-orange-100 text-orange-800 border-orange-200', icon: '💼', key: 'BIZ' },
-          { id: 'ops', name: 'Operations', color: 'bg-yellow-100 text-yellow-800 border-yellow-200', icon: '⚡', key: 'OPS' }
-        ]
-        setAvailableTeams(teams)
-
-        // Set default selected teams if none are saved
-        if (selectedTeams.length === 0) {
-          const defaultTeams = ['mar', 'eng', 'product']
-          setSelectedTeams(defaultTeams)
-          setActiveTab('mar')
-        } else {
-          setActiveTab(selectedTeams[0] || 'all')
-        }
-
-        // Fetch real milestones from Linear Summer Launch project
-        try {
-          const milestonesResponse = await fetch('/api/integrations/linear/milestones', { headers })
-          if (milestonesResponse.ok) {
-            const milestonesData = await milestonesResponse.json()
-            if (milestonesData.success) {
-              // Transform Linear milestones to match our interface
-              const linearMilestones: Milestone[] = milestonesData.milestones.map((milestone: any) => ({
-                id: milestone.id,
-                title: milestone.title,
-                description: milestone.description,
-                due_date: milestone.due_date,
-                status: milestone.status,
-                priority: milestone.priority,
-                cycle: milestone.cycle,
-                team_id: milestone.team.key.toLowerCase(),
-                team: {
-                  id: milestone.team.key.toLowerCase(),
-                  name: milestone.team.name,
-                  key: milestone.team.key,
-                  icon: milestone.team.icon,
-                  color: getTeamColor(milestone.team.key)
-                },
-                tasks: milestone.tasks.map((task: any) => ({
-                  id: task.id,
-                  title: task.title,
-                  status: mapLinearStatusToLocal(task.status),
-                  priority: mapLinearPriorityToLocal(task.priority),
-                  cycle: milestone.cycle,
-                  assignee: task.assignee,
-                  due_date: task.due_date,
-                  url: task.url,
-                  created_at: milestone.created_at
-                })),
-                progress: milestone.progress,
-                progress_percentage: milestone.progress,
-                created_at: milestone.created_at,
-                updated_at: milestone.updated_at,
-                overdue: milestone.overdue,
-                project: milestone.project
-              }))
-              setMilestones(linearMilestones)
-              // Debug: Log all tasks and their due dates
-              linearMilestones.forEach(milestone => {
-                milestone.tasks.forEach(task => {
-                })
-              })
-              
-              // Set weekly tasks and active tasks without due dates
-              const weeklyTasksResult = getWeeklyTasks(linearMilestones)
-              const activeTasksResult = getActiveTasksWithoutDueDates(linearMilestones)
-              
-              
-              setWeeklyTasks(weeklyTasksResult)
-              setActiveTasks(activeTasksResult)
-            } else {
-              // Fallback to empty milestones
-              setMilestones([])
-              setWeeklyTasks({})
-              setActiveTasks([])
-            }
-          } else {
-            // Fallback to empty milestones  
-            setMilestones([])
-          }
-        } catch (error) {
-          // Fallback to empty milestones
-          setMilestones([])
-        } finally {
-          setMilestonesLoading(false)
-        }
-
-        // Fetch recent meetings (gracefully handle auth errors)
-        try {
-          const meetingsResponse = await fetch('/api/meetings', { headers })
-          if (meetingsResponse.ok) {
-            const meetingsData = await meetingsResponse.json()
-            const recentMeetings = meetingsData.meetings?.slice(0, 3).map((meeting: any) => ({
-              id: meeting.id,
-              title: meeting.title,
-              summary: meeting.overview || 'No summary available',
-              insights: meeting.action_items || [],
-              timestamp: meeting.meeting_date
-            })) || []
-            setMeetings(recentMeetings)
-          } else {
-          }
-        } catch (error) {
-        }
-
-        // Fetch AI insights from our 3-agent pipeline
-        try {
-          let insightsResponse = await fetch('/api/ai-insights?limit=5', { headers })
-          
-          if (!insightsResponse.ok && insightsResponse.status === 401) {
-            insightsResponse = await fetch('/api/ai-insights?test=true&limit=5')
-          }
-          
-          if (insightsResponse.ok) {
-            const insightsData = await insightsResponse.json()
-            setAiInsights(insightsData.insights || [])
-          } else {
-          }
-        } catch (error) {
-        }
-
-        setBusinessUpdates([])
-        
-      } catch (error) {
-        console.error('Error fetching morning review data:', error)
-      } finally {
-        setInsightsLoading(false)
-      }
-    }
-    
-    fetchData()
-  }, [])
-
-  const handleInsightAction = (insightId: string, action: 'star' | 'flashcard' | 'view') => {
-    // TODO: Implement insight actions
-  }
-
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high': return 'text-red-600'
@@ -546,17 +568,6 @@ export function MorningReview() {
     }
   }
 
-  const getUniqueCycles = () => {
-    const cycles = new Set(['all'])
-    milestones.forEach(milestone => {
-      if (milestone.cycle) cycles.add(milestone.cycle)
-      milestone.tasks.forEach(task => {
-        if (task.cycle) cycles.add(task.cycle)
-      })
-    })
-    return Array.from(cycles)
-  }
-
   const getFilteredTasks = (milestone: Milestone) => {
     if (taskFilter === 'all') return milestone.tasks
     return milestone.tasks.filter(task => task.cycle === taskFilter)
@@ -565,21 +576,6 @@ export function MorningReview() {
   const getFilteredMilestones = () => {
     if (activeTab === 'all') return milestones
     return milestones.filter(milestone => milestone.team_id === activeTab)
-  }
-
-  const handleTeamToggle = (teamId: string) => {
-    setSelectedTeams(prev => {
-      if (prev.includes(teamId)) {
-        const newTeams = prev.filter(id => id !== teamId)
-        // If removing the active tab, switch to first available tab or 'all'
-        if (activeTab === teamId) {
-          setActiveTab(newTeams.length > 0 ? newTeams[0] : 'all')
-        }
-        return newTeams
-      } else {
-        return [...prev, teamId]
-      }
-    })
   }
 
   const getMilestoneCountForTeam = (teamId: string) => {
@@ -1259,4 +1255,4 @@ export function MorningReview() {
       </div>
     </div>
   )
-}
+})

@@ -1,23 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createLinearAPI } from '@/lib/integrations/linear-api'
+import { apiCache, CACHE_KEYS, CACHE_TTL } from '@/lib/cache'
 
 export async function GET(request: NextRequest) {
   try {
-    const apiKey = process.env.LINEAR_API_KEY
-    if (!apiKey) {
+    // Check cache first
+    const cacheKey = CACHE_KEYS.LINEAR_MILESTONES
+    const cachedData = apiCache.get(cacheKey)
+    
+    if (cachedData) {
+      return NextResponse.json(cachedData)
+    }
+
+    const linearApiKey = process.env.LINEAR_API_KEY
+    if (!linearApiKey) {
       return NextResponse.json(
-        { error: 'LINEAR_API_KEY not configured' },
+        { error: 'Linear API key not configured' },
         { status: 500 }
       )
     }
 
-    const { searchParams } = new URL(request.url)
-    const projectId = searchParams.get('project_id')
-    const teamFilter = searchParams.get('team')
+    const linearAPI = createLinearAPI(linearApiKey)
 
-    const linearAPI = createLinearAPI(apiKey)
-
-    // Get all projects and milestones
+    // Get projects and milestones
     const [projects, milestones] = await Promise.all([
       linearAPI.getProjects(),
       linearAPI.getProjectMilestones()
@@ -147,14 +152,19 @@ export async function GET(request: NextRequest) {
       formattedMilestones.push(unassignedMilestone)
     }
 
-    return NextResponse.json({
+    const responseData = {
       success: true,
       milestones: formattedMilestones,
       project: summerLaunchProject,
       team: marketingTeam,
       count: formattedMilestones.length,
       unassignedTasksCount: unassignedIssues.length
-    })
+    }
+
+    // Cache the response
+    apiCache.set(cacheKey, responseData, CACHE_TTL.LINEAR_DATA)
+
+    return NextResponse.json(responseData)
 
   } catch (error) {
     console.error('Linear milestones API error:', error)

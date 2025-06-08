@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getUser } from '@/lib/auth-utils'
 import { createClient } from '@supabase/supabase-js'
 import { Database } from '@/lib/database.types'
+import { apiCache, CACHE_KEYS, CACHE_TTL } from '@/lib/cache'
 
 const supabase = createClient<Database>(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -60,6 +61,14 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const todayReset = searchParams.get('today') === 'true'
 
+    // Create cache key with user ID and reset parameter
+    const cacheKey = `${CACHE_KEYS.FLASHCARDS}:${user.id}:${todayReset}`
+    const cachedData = apiCache.get(cacheKey)
+    
+    if (cachedData) {
+      return NextResponse.json(cachedData)
+    }
+
     // Get flashcards that are due for review (or all today's flashcards in reset mode)
     let query = supabase
       .from('flashcards')
@@ -80,44 +89,43 @@ export async function GET(request: NextRequest) {
 
     if (todayReset) {
       // Get all flashcards created today
-      const today = new Date().toISOString().split('T')[0] // Get YYYY-MM-DD format
-      query = query.gte('created_at', `${today}T00:00:00.000Z`)
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      query = query.gte('created_at', today.toISOString())
     } else {
-      // Normal mode: only due cards
+      // Get flashcards due for review
       const now = new Date().toISOString()
-      query = query.or(`due_at.lte.${now},due_at.is.null`)
+      query = query.lte('due_at', now)
     }
 
-    const { data: flashcards, error: flashcardsError } = await query
-      .order('created_at', { ascending: false })
+    const { data: flashcards, error } = await query
+      .order('due_at', { ascending: true })
+      .limit(50)
 
-    if (flashcardsError) {
+    if (error) {
+      console.error('Database error:', error)
       return NextResponse.json({ error: 'Database error' }, { status: 500 })
     }
 
-    // Format flashcards for the frontend
-    const formattedFlashcards = flashcards?.map(card => ({
-      id: card.id,
-      question: card.question,
-      answer: card.answer,
-      difficulty: 'medium' as const, // This is just for the interface
-      source_meeting_id: card.meeting_id,
-      source_meeting_title: card.meetings?.title || 'Meeting',
-      created_at: card.created_at
-    })) || []
+    const responseData = {
+      flashcards: flashcards || [],
+      count: flashcards?.length || 0
+    }
 
-    return NextResponse.json({
-      success: true,
-      flashcards: formattedFlashcards,
-      total: formattedFlashcards.length,
-      todayReset
-    })
+    // Cache the response (shorter TTL since flashcards update frequently)
+    apiCache.set(cacheKey, responseData, CACHE_TTL.FLASHCARDS)
+
+    return NextResponse.json(responseData)
 
   } catch (error) {
-    return NextResponse.json({ 
-      error: 'Internal server error',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+    console.error('Flashcards API error:', error)
+    return NextResponse.json(
+      { 
+        error: 'Failed to fetch flashcards',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
+      { status: 500 }
+    )
   }
 }
 
