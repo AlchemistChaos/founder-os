@@ -94,6 +94,7 @@ interface Task {
   assignee?: string
   created_at?: string
   url?: string
+  milestone_title?: string // Added for weekly/active task views
 }
 
 export function MorningReview() {
@@ -118,6 +119,7 @@ export function MorningReview() {
   }))
   const [taskStatusFilter, setTaskStatusFilter] = useState('all')
   const [weeklyTasks, setWeeklyTasks] = useState<{[key: string]: Task[]}>({})
+  const [activeTasks, setActiveTasks] = useState<Task[]>([])
 
   // Helper functions for Linear data transformation
   const getTeamColor = (teamKey: string) => {
@@ -203,6 +205,26 @@ export function MorningReview() {
     })
     
     return weeklyTasksMap
+  }
+
+  const getActiveTasksWithoutDueDates = (milestones: Milestone[]) => {
+    const activeTasks: Task[] = []
+    const activeStatuses = ['backlog', 'todo', 'in_progress', 'review']
+    
+    milestones.forEach(milestone => {
+      milestone.tasks.forEach(task => {
+        // Only include tasks without due dates that are in active statuses
+        if (!task.due_date && activeStatuses.includes(task.status.toLowerCase())) {
+          activeTasks.push({
+            ...task,
+            milestone_title: milestone.title,
+            milestone_id: milestone.id
+          })
+        }
+      })
+    })
+    
+    return activeTasks
   }
 
   const getTaskStatusColor = (status: string) => {
@@ -338,6 +360,7 @@ export function MorningReview() {
                   cycle: milestone.cycle,
                   assignee: task.assignee,
                   due_date: task.due_date,
+                  url: task.url,
                   created_at: milestone.created_at
                 })),
                 progress: milestone.progress,
@@ -348,13 +371,15 @@ export function MorningReview() {
                 project: milestone.project
               }))
               setMilestones(linearMilestones)
-              // Set weekly tasks
+              // Set weekly tasks and active tasks without due dates
               setWeeklyTasks(getWeeklyTasks(linearMilestones))
+              setActiveTasks(getActiveTasksWithoutDueDates(linearMilestones))
             } else {
               console.log('Failed to fetch milestones from Linear:', milestonesData.error)
               // Fallback to empty milestones
               setMilestones([])
               setWeeklyTasks({})
+              setActiveTasks([])
             }
           } else {
             console.log('Milestones API failed:', milestonesResponse.status)
@@ -536,7 +561,7 @@ export function MorningReview() {
 
   return (
     <div className="theme-light min-h-screen p-4">
-      <div className="max-w-4xl mx-auto space-y-ritual">
+      <div className="max-w-7xl mx-auto space-y-ritual">
         {/* Header */}
         <div className="text-center mb-8 animate-fade-in-up">
           <h1 className="header-text mb-2">
@@ -565,7 +590,15 @@ export function MorningReview() {
                   {dayTasks.length > 0 ? (
                     <div className="space-y-2">
                       {dayTasks.slice(0, 3).map(task => (
-                        <div key={task.id} className="bg-neutral-50 rounded-lg p-2">
+                        <div 
+                          key={task.id} 
+                          className="bg-neutral-50 rounded-lg p-2 cursor-pointer hover:bg-neutral-100 transition-colors"
+                          onClick={() => {
+                            if (task.url) {
+                              window.open(task.url, '_blank')
+                            }
+                          }}
+                        >
                           <div className="text-xs font-medium text-neutral-900 line-clamp-1 mb-1">
                             {task.title}
                           </div>
@@ -597,6 +630,46 @@ export function MorningReview() {
             })}
           </div>
         </div>
+
+        {/* Active Tasks Without Due Dates */}
+        {activeTasks.length > 0 && (
+          <div className="card-container animate-fade-in-up mb-6">
+            <h2 className="section-title mb-4">
+              🔄 Active Tasks (No Due Date)
+            </h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {activeTasks.map(task => (
+                <div 
+                  key={task.id} 
+                  className="bg-white border border-neutral-200 rounded-xl p-3 cursor-pointer hover:border-neutral-300 transition-colors hover:bg-neutral-50"
+                  onClick={() => {
+                    if (task.url) {
+                      window.open(task.url, '_blank')
+                    }
+                  }}
+                >
+                  <div className="text-sm font-medium text-neutral-900 line-clamp-2 mb-2">
+                    {task.title}
+                  </div>
+                  <div className="flex items-center justify-between text-xs mb-2">
+                    <span className={`px-2 py-1 rounded border ${getTaskStatusColor(task.status)}`}>
+                      {task.status}
+                    </span>
+                    {task.assignee && (
+                      <span className="text-neutral-500 truncate ml-1">
+                        👤 {task.assignee}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-xs text-neutral-400">
+                    {task.milestone_title}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Milestones */}
         <div className="card-container animate-fade-in-up">
@@ -858,7 +931,15 @@ export function MorningReview() {
                 
                 <div className="space-y-3">
                   {getFilteredTasksByStatus(selectedMilestone).map(task => (
-                    <div key={task.id} className="border border-neutral-200 rounded-xl p-4 hover:border-neutral-300 transition-colors">
+                    <div 
+                      key={task.id} 
+                      className="border border-neutral-200 rounded-xl p-4 hover:border-neutral-300 transition-colors cursor-pointer hover:bg-neutral-50"
+                      onClick={() => {
+                        if (task.url) {
+                          window.open(task.url, '_blank')
+                        }
+                      }}
+                    >
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">

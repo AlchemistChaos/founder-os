@@ -86,15 +86,19 @@ export async function GET(request: NextRequest) {
         if (!milestoneIssues.has(issue.projectMilestone.id)) {
           milestoneIssues.set(issue.projectMilestone.id, [])
         }
+        // Create a fallback URL if Linear doesn't provide one
+        const fallbackUrl = issue.url || `https://linear.app/founderos/${issue.identifier}`
+        
         milestoneIssues.get(issue.projectMilestone.id).push({
           id: issue.id,
           title: issue.title,
           status: issue.state.name,
           assignee: issue.assignee?.name,
           priority: issue.priority,
-          due_date: issue.dueDate || generateSampleDueDate(issue.title),
-          url: issue.url
+          due_date: issue.dueDate,
+          url: fallbackUrl
         })
+        // console.log('Issue URL:', issue.title, '→', issue.url, 'fallback:', fallbackUrl)
       }
     })
 
@@ -102,6 +106,13 @@ export async function GET(request: NextRequest) {
     formattedMilestones.forEach(milestone => {
       milestone.tasks = milestoneIssues.get(milestone.id) || []
     })
+
+    // console.log('Returning milestones with tasks:', formattedMilestones.map(m => ({
+    //   id: m.id,
+    //   title: m.title,
+    //   taskCount: m.tasks.length,
+    //   tasks: m.tasks.map(t => ({ title: t.title, url: t.url }))
+    // })))
 
     return NextResponse.json({
       success: true,
@@ -173,11 +184,5 @@ function determinePriority(milestone: any): 'high' | 'medium' | 'low' {
   return 'low'
 }
 
-function generateSampleDueDate(taskTitle: string): string {
-  // Generate sample due dates for this week (June 9-13, 2025) for testing
-  const baseDate = new Date('2025-06-09') // Monday
-  const daysOffset = Math.abs(taskTitle.length % 5) // 0-4 days offset
-  const dueDate = new Date(baseDate)
-  dueDate.setDate(baseDate.getDate() + daysOffset)
-  return dueDate.toISOString()
-}
+// Removed generateSampleDueDate function since we don't want fake due dates
+// Tasks should only have due dates if they actually have them in Linear
