@@ -153,31 +153,50 @@ export function MorningReview() {
   // Weekly task helpers
   const getWeeklyTasks = (milestones: Milestone[]) => {
     const today = new Date()
-    const startOfWeek = new Date(today)
-    startOfWeek.setDate(today.getDate() - today.getDay()) // Start from Sunday
+    const currentDayOfWeek = today.getDay() // 0 = Sunday, 1 = Monday, etc.
     
-    const weekDays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
-    const weeklyTasksMap: {[key: string]: Task[]} = {}
+    // If today is Sunday, show tasks for the coming business week (Monday-Friday)
+    // Otherwise, show tasks for the current business week
+    let startOfBusinessWeek: Date
     
-    weekDays.forEach(day => weeklyTasksMap[day] = [])
+    if (currentDayOfWeek === 0) {
+      // Today is Sunday, show next week's tasks (Monday to Friday)
+      startOfBusinessWeek = new Date(today)
+      startOfBusinessWeek.setDate(today.getDate() + 1) // Next Monday
+    } else {
+      // Show current week's business days
+      startOfBusinessWeek = new Date(today)
+      startOfBusinessWeek.setDate(today.getDate() - (currentDayOfWeek - 1)) // This Monday
+    }
+    
+    const weeklyTasksMap: {[key: string]: Task[]} = {
+      monday: [],
+      tuesday: [],
+      wednesday: [],
+      thursday: [],
+      friday: []
+    }
     
     milestones.forEach(milestone => {
       milestone.tasks.forEach(task => {
         if (task.due_date) {
           const taskDate = new Date(task.due_date)
-          const dayOfWeek = taskDate.getDay()
-          const dayName = weekDays[dayOfWeek]
           
-          // Only include tasks due this week
-          const endOfWeek = new Date(startOfWeek)
-          endOfWeek.setDate(startOfWeek.getDate() + 6)
-          
-          if (taskDate >= startOfWeek && taskDate <= endOfWeek) {
-            weeklyTasksMap[dayName].push({
-              ...task,
-              milestone_title: milestone.title,
-              milestone_id: milestone.id
-            })
+          // Check if task is due Monday-Friday of the target week
+          for (let i = 0; i < 5; i++) {
+            const dayDate = new Date(startOfBusinessWeek)
+            dayDate.setDate(startOfBusinessWeek.getDate() + i)
+            
+            // Check if task is due on this specific day
+            if (taskDate.toDateString() === dayDate.toDateString()) {
+              const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
+              weeklyTasksMap[dayNames[i]].push({
+                ...task,
+                milestone_title: milestone.title,
+                milestone_id: milestone.id
+              })
+              break
+            }
           }
         }
       })
@@ -318,6 +337,7 @@ export function MorningReview() {
                   priority: mapLinearPriorityToLocal(task.priority),
                   cycle: milestone.cycle,
                   assignee: task.assignee,
+                  due_date: task.due_date,
                   created_at: milestone.created_at
                 })),
                 progress: milestone.progress,
@@ -329,7 +349,10 @@ export function MorningReview() {
               }))
               setMilestones(linearMilestones)
               // Set weekly tasks
-              setWeeklyTasks(getWeeklyTasks(linearMilestones))
+              const weeklyTasksResult = getWeeklyTasks(linearMilestones)
+              console.log('Weekly tasks result:', weeklyTasksResult)
+              console.log('First milestone tasks:', linearMilestones[0]?.tasks)
+              setWeeklyTasks(weeklyTasksResult)
             } else {
               console.log('Failed to fetch milestones from Linear:', milestonesData.error)
               // Fallback to empty milestones
@@ -516,7 +539,7 @@ export function MorningReview() {
 
   return (
     <div className="theme-light min-h-screen p-4">
-      <div className="max-w-2xl mx-auto space-y-ritual">
+      <div className="max-w-4xl mx-auto space-y-ritual">
         {/* Header */}
         <div className="text-center mb-8 animate-fade-in-up">
           <h1 className="header-text mb-2">

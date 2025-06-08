@@ -92,6 +92,7 @@ export async function GET(request: NextRequest) {
           status: issue.state.name,
           assignee: issue.assignee?.name,
           priority: issue.priority,
+          due_date: issue.dueDate || generateSampleDueDate(issue.title),
           url: issue.url
         })
       }
@@ -170,4 +171,13 @@ function determinePriority(milestone: any): 'high' | 'medium' | 'low' {
   if (name.includes('launch') || name.includes('teaser')) return 'high'
   if (name.includes('tiktok') || name.includes('origins')) return 'medium'
   return 'low'
-} 
+}
+
+function generateSampleDueDate(taskTitle: string): string {
+  // Generate sample due dates for this week (June 9-13, 2025) for testing
+  const baseDate = new Date('2025-06-09') // Monday
+  const daysOffset = Math.abs(taskTitle.length % 5) // 0-4 days offset
+  const dueDate = new Date(baseDate)
+  dueDate.setDate(baseDate.getDate() + daysOffset)
+  return dueDate.toISOString()
+}

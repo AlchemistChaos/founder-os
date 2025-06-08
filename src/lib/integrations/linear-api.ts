@@ -34,6 +34,7 @@ interface LinearIssue {
     }>
   }
   priority: number
+  dueDate?: string
   createdAt: string
   updatedAt: string
   url: string
