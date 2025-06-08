@@ -493,7 +493,7 @@ export function MorningReview() {
               ))}
             </div>
           ) : getFilteredMilestones().length > 0 ? (
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {getFilteredMilestones().map((milestone) => {
                 const daysUntil = getDaysUntilDue(milestone.due_date)
                 const isOverdue = daysUntil < 0
@@ -506,24 +506,20 @@ export function MorningReview() {
                     }`}
                     onClick={() => setSelectedMilestone(milestone)}
                   >
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-medium text-neutral-900">{milestone.title}</span>
-                          <span className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(milestone.status)}`}>
-                            {getStatusIcon(milestone.status)} {milestone.status.replace('_', ' ')}
-                          </span>
-                          <span className={`text-xs px-2 py-1 rounded-full border ${milestone.team.color}`}>
-                            {milestone.team.icon} {milestone.team.name}
-                          </span>
-                        </div>
-                        <p className="text-sm text-neutral-600 line-clamp-1">{milestone.description}</p>
+                    <div className="mb-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="font-medium text-neutral-900 text-sm">{milestone.title}</span>
+                        <span className={`text-xs px-2 py-1 rounded-full border ${milestone.team.color}`}>
+                          {milestone.team.icon}
+                        </span>
                       </div>
-                      <div className="text-right ml-4">
-                        <div className={`text-xs font-medium ${isOverdue ? 'text-red-600' : 'text-neutral-500'}`}>
+                      <p className="text-xs text-neutral-600 line-clamp-2 mb-3">{milestone.description}</p>
+                      
+                      <div className="flex items-center justify-between text-xs">
+                        <div className={`font-medium ${isOverdue ? 'text-red-600' : 'text-neutral-500'}`}>
                           {formatDueDate(milestone.due_date)}
                         </div>
-                        <div className="text-xs text-neutral-400 mt-1">
+                        <div className="text-neutral-400">
                           {milestone.tasks.length} tasks
                         </div>
                       </div>
@@ -538,7 +534,7 @@ export function MorningReview() {
                         ></div>
                       </div>
                       <span className="text-xs text-neutral-500 min-w-[3rem]">
-                        {milestone.progress_percentage}%
+                        {milestone.progress}%
                       </span>
                     </div>
                   </div>
