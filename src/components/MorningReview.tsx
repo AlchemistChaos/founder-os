@@ -52,6 +52,13 @@ interface AIInsight {
   interest_level?: string
 }
 
+interface Team {
+  id: string
+  name: string
+  color: string
+  icon: string
+}
+
 interface Milestone {
   id: string
   title: string
@@ -60,6 +67,8 @@ interface Milestone {
   status: 'not_started' | 'in_progress' | 'completed'
   priority: 'high' | 'medium' | 'low'
   cycle?: string
+  team_id: string
+  team: Team
   tasks: Task[]
   progress_percentage: number
   created_at: string
@@ -84,6 +93,10 @@ export function MorningReview() {
   const [meetings, setMeetings] = useState<Meeting[]>([])
   const [aiInsights, setAiInsights] = useState<AIInsight[]>([])
   const [milestones, setMilestones] = useState<Milestone[]>([])
+  const [availableTeams, setAvailableTeams] = useState<Team[]>([])
+  const [selectedTeams, setSelectedTeams] = useState<string[]>([])
+  const [activeTab, setActiveTab] = useState<string>('all')
+  const [showTeamSettings, setShowTeamSettings] = useState(false)
   const [selectedMilestone, setSelectedMilestone] = useState<Milestone | null>(null)
   const [taskFilter, setTaskFilter] = useState<string>('all') // 'all' or specific cycle
   const [insightsLoading, setInsightsLoading] = useState(true)
@@ -94,6 +107,19 @@ export function MorningReview() {
     month: 'long', 
     day: 'numeric' 
   }))
+
+  // Load team preferences from localStorage
+  useEffect(() => {
+    const savedTeams = localStorage.getItem('selectedTeams')
+    if (savedTeams) {
+      setSelectedTeams(JSON.parse(savedTeams))
+    }
+  }, [])
+
+  // Save team preferences to localStorage
+  useEffect(() => {
+    localStorage.setItem('selectedTeams', JSON.stringify(selectedTeams))
+  }, [selectedTeams])
 
   useEffect(() => {
     const fetchData = async () => {
@@ -132,6 +158,26 @@ export function MorningReview() {
           console.log('Flashcards fetch error:', error)
         }
 
+        // Define available teams
+        const teams: Team[] = [
+          { id: 'engineering', name: 'Engineering', color: 'bg-blue-100 text-blue-800 border-blue-200', icon: '⚙️' },
+          { id: 'product', name: 'Product', color: 'bg-purple-100 text-purple-800 border-purple-200', icon: '🎯' },
+          { id: 'marketing', name: 'Marketing', color: 'bg-green-100 text-green-800 border-green-200', icon: '📢' },
+          { id: 'sales', name: 'Sales', color: 'bg-orange-100 text-orange-800 border-orange-200', icon: '💼' },
+          { id: 'design', name: 'Design', color: 'bg-pink-100 text-pink-800 border-pink-200', icon: '🎨' },
+          { id: 'ops', name: 'Operations', color: 'bg-yellow-100 text-yellow-800 border-yellow-200', icon: '⚡' }
+        ]
+        setAvailableTeams(teams)
+
+        // Set default selected teams if none are saved
+        if (selectedTeams.length === 0) {
+          const defaultTeams = ['engineering', 'product', 'marketing']
+          setSelectedTeams(defaultTeams)
+          setActiveTab('engineering')
+        } else {
+          setActiveTab(selectedTeams[0] || 'all')
+        }
+
         // Fetch milestones (mock data for now - we'll create API later)
         try {
           // For now, using mock data until we create the API
@@ -144,6 +190,8 @@ export function MorningReview() {
               status: 'in_progress',
               priority: 'high',
               cycle: 'Q2 2025',
+              team_id: 'engineering',
+              team: teams.find(t => t.id === 'engineering')!,
               progress_percentage: 75,
               created_at: '2025-05-01',
               tasks: [
@@ -184,6 +232,8 @@ export function MorningReview() {
               status: 'not_started',
               priority: 'medium',
               cycle: 'Q2 2025',
+              team_id: 'product',
+              team: teams.find(t => t.id === 'product')!,
               progress_percentage: 0,
               created_at: '2025-05-01',
               tasks: [
@@ -215,6 +265,8 @@ export function MorningReview() {
               status: 'not_started',
               priority: 'high',
               cycle: 'Q3 2025',
+              team_id: 'sales',
+              team: teams.find(t => t.id === 'sales')!,
               progress_percentage: 10,
               created_at: '2025-05-01',
               tasks: [
@@ -234,6 +286,105 @@ export function MorningReview() {
                   status: 'todo',
                   priority: 'medium',
                   cycle: 'Q3 2025',
+                  created_at: '2025-05-01'
+                }
+              ]
+            },
+            {
+              id: '4',
+              title: 'Brand Identity Design',
+              description: 'Create comprehensive brand identity and design system',
+              due_date: '2025-06-30',
+              status: 'in_progress',
+              priority: 'medium',
+              cycle: 'Q2 2025',
+              team_id: 'design',
+              team: teams.find(t => t.id === 'design')!,
+              progress_percentage: 45,
+              created_at: '2025-05-01',
+              tasks: [
+                {
+                  id: '8',
+                  milestone_id: '4',
+                  title: 'Logo design variations',
+                  status: 'completed',
+                  priority: 'high',
+                  cycle: 'Q2 2025',
+                  created_at: '2025-05-01'
+                },
+                {
+                  id: '9',
+                  milestone_id: '4',
+                  title: 'Color palette and typography',
+                  status: 'in_progress',
+                  priority: 'high',
+                  cycle: 'Q2 2025',
+                  created_at: '2025-05-01'
+                }
+              ]
+            },
+            {
+              id: '5',
+              title: 'Launch Marketing Campaign',
+              description: 'Execute go-to-market strategy and initial marketing push',
+              due_date: '2025-07-15',
+              status: 'not_started',
+              priority: 'high',
+              cycle: 'Q3 2025',
+              team_id: 'marketing',
+              team: teams.find(t => t.id === 'marketing')!,
+              progress_percentage: 5,
+              created_at: '2025-05-01',
+              tasks: [
+                {
+                  id: '10',
+                  milestone_id: '5',
+                  title: 'Content strategy and calendar',
+                  status: 'todo',
+                  priority: 'high',
+                  cycle: 'Q3 2025',
+                  created_at: '2025-05-01'
+                },
+                {
+                  id: '11',
+                  milestone_id: '5',
+                  title: 'Social media setup',
+                  status: 'in_progress',
+                  priority: 'medium',
+                  cycle: 'Q3 2025',
+                  created_at: '2025-05-01'
+                }
+              ]
+            },
+            {
+              id: '6',
+              title: 'Set Up Operations',
+              description: 'Establish operational processes and systems',
+              due_date: '2025-06-01',
+              status: 'in_progress',
+              priority: 'medium',
+              cycle: 'Q2 2025',
+              team_id: 'ops',
+              team: teams.find(t => t.id === 'ops')!,
+              progress_percentage: 60,
+              created_at: '2025-05-01',
+              tasks: [
+                {
+                  id: '12',
+                  milestone_id: '6',
+                  title: 'Legal entity setup',
+                  status: 'completed',
+                  priority: 'high',
+                  cycle: 'Q2 2025',
+                  created_at: '2025-05-01'
+                },
+                {
+                  id: '13',
+                  milestone_id: '6',
+                  title: 'Financial tracking system',
+                  status: 'in_progress',
+                  priority: 'medium',
+                  cycle: 'Q2 2025',
                   created_at: '2025-05-01'
                 }
               ]
@@ -368,6 +519,49 @@ export function MorningReview() {
     return milestone.tasks.filter(task => task.cycle === taskFilter)
   }
 
+  const getFilteredMilestones = () => {
+    if (activeTab === 'all') return milestones
+    return milestones.filter(milestone => milestone.team_id === activeTab)
+  }
+
+  const handleTeamToggle = (teamId: string) => {
+    setSelectedTeams(prev => {
+      if (prev.includes(teamId)) {
+        const newTeams = prev.filter(id => id !== teamId)
+        // If removing the active tab, switch to first available tab or 'all'
+        if (activeTab === teamId) {
+          setActiveTab(newTeams.length > 0 ? newTeams[0] : 'all')
+        }
+        return newTeams
+      } else {
+        return [...prev, teamId]
+      }
+    })
+  }
+
+  const getMilestoneCountForTeam = (teamId: string) => {
+    return milestones.filter(m => m.team_id === teamId).length
+  }
+
+  const getAvailableTabs = () => {
+    const tabs = [{ id: 'all', name: 'All Teams', count: milestones.length }]
+    
+    selectedTeams.forEach(teamId => {
+      const team = availableTeams.find(t => t.id === teamId)
+      if (team) {
+        tabs.push({
+          id: teamId,
+          name: team.name,
+          count: getMilestoneCountForTeam(teamId),
+          icon: team.icon,
+          color: team.color
+        })
+      }
+    })
+    
+    return tabs
+  }
+
   return (
     <div className="theme-light min-h-screen p-4">
       <div className="max-w-2xl mx-auto space-y-ritual">
@@ -381,9 +575,37 @@ export function MorningReview() {
 
         {/* Milestones */}
         <div className="card-container animate-fade-in-up">
-          <h2 className="section-title mb-4">
-            🎯 Milestones
-          </h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="section-title">
+              🎯 Milestones
+            </h2>
+            <button
+              onClick={() => setShowTeamSettings(true)}
+              className="text-neutral-400 hover:text-neutral-600 p-2 rounded-lg hover:bg-neutral-100 transition-colors"
+              title="Team Settings"
+            >
+              ⚙️
+            </button>
+          </div>
+
+          {/* Team Tabs */}
+          <div className="flex gap-1 mb-4 overflow-x-auto pb-2">
+            {getAvailableTabs().map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                  activeTab === tab.id
+                    ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                    : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'
+                }`}
+              >
+                {tab.icon && <span>{tab.icon}</span>}
+                <span>{tab.name}</span>
+                <span className="text-xs opacity-75">({tab.count})</span>
+              </button>
+            ))}
+          </div>
           
           {milestonesLoading ? (
             <div className="space-y-3">
@@ -391,9 +613,9 @@ export function MorningReview() {
                 <div key={i} className="skeleton h-20 rounded-xl"></div>
               ))}
             </div>
-          ) : milestones.length > 0 ? (
+          ) : getFilteredMilestones().length > 0 ? (
             <div className="space-y-3">
-              {milestones.map((milestone) => {
+              {getFilteredMilestones().map((milestone) => {
                 const daysUntil = getDaysUntilDue(milestone.due_date)
                 const isOverdue = daysUntil < 0
                 
@@ -411,6 +633,9 @@ export function MorningReview() {
                           <span className="font-medium text-neutral-900">{milestone.title}</span>
                           <span className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(milestone.status)}`}>
                             {getStatusIcon(milestone.status)} {milestone.status.replace('_', ' ')}
+                          </span>
+                          <span className={`text-xs px-2 py-1 rounded-full border ${milestone.team.color}`}>
+                            {milestone.team.icon} {milestone.team.name}
                           </span>
                         </div>
                         <p className="text-sm text-neutral-600 line-clamp-1">{milestone.description}</p>
@@ -444,13 +669,83 @@ export function MorningReview() {
           ) : (
             <div className="text-center py-8">
               <div className="text-4xl mb-2">🎯</div>
-              <p className="subtext">No milestones yet. Set your first goal!</p>
+              <p className="subtext">
+                {activeTab === 'all' 
+                  ? 'No milestones yet. Set your first goal!' 
+                  : `No milestones for ${availableTeams.find(t => t.id === activeTab)?.name || 'this team'} yet.`
+                }
+              </p>
               <button className="btn-secondary mt-4">
                 Add Milestone
               </button>
             </div>
           )}
         </div>
+
+        {/* Team Settings Modal */}
+        {showTeamSettings && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl max-w-md w-full">
+              <div className="p-6 border-b border-neutral-200">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-semibold text-neutral-900">
+                    Team Settings
+                  </h3>
+                  <button 
+                    onClick={() => setShowTeamSettings(false)}
+                    className="text-neutral-400 hover:text-neutral-600 text-2xl leading-none"
+                  >
+                    ×
+                  </button>
+                </div>
+                <p className="text-neutral-600 text-sm mt-2">
+                  Select which teams to show as tabs in your milestones view
+                </p>
+              </div>
+              
+              <div className="p-6">
+                <div className="space-y-3">
+                  {availableTeams.map(team => (
+                    <div key={team.id} className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="text-lg">{team.icon}</span>
+                        <div>
+                          <div className="font-medium text-neutral-900">{team.name}</div>
+                          <div className="text-xs text-neutral-500">
+                            {getMilestoneCountForTeam(team.id)} milestones
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleTeamToggle(team.id)}
+                        className={`w-12 h-6 rounded-full transition-colors relative ${
+                          selectedTeams.includes(team.id)
+                            ? 'bg-blue-500'
+                            : 'bg-gray-300'
+                        }`}
+                      >
+                        <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${
+                          selectedTeams.includes(team.id)
+                            ? 'translate-x-7'
+                            : 'translate-x-1'
+                        }`}></div>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="mt-6 pt-4 border-t border-neutral-200">
+                  <button
+                    onClick={() => setShowTeamSettings(false)}
+                    className="btn-primary w-full"
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Milestone Detail Modal */}
         {selectedMilestone && (
@@ -475,6 +770,9 @@ export function MorningReview() {
                 <div className="flex items-center gap-4 text-sm">
                   <span className={`px-2 py-1 rounded-full border ${getStatusColor(selectedMilestone.status)}`}>
                     {getStatusIcon(selectedMilestone.status)} {selectedMilestone.status.replace('_', ' ')}
+                  </span>
+                  <span className={`px-2 py-1 rounded-full border ${selectedMilestone.team.color}`}>
+                    {selectedMilestone.team.icon} {selectedMilestone.team.name}
                   </span>
                   <span className="text-neutral-500">
                     Due: {new Date(selectedMilestone.due_date).toLocaleDateString()}
