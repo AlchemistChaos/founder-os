@@ -125,8 +125,13 @@ export const MorningReview = React.memo(function MorningReview() {
   // Helper functions moved to bottom of component to avoid duplication
 
   // Note: Removed useMemo calls to fix initialization order issues
+  
+  // Define helper functions early to avoid initialization order issues
+  const getFilteredMilestones = () => {
+    if (activeTab === 'all') return milestones
+    return milestones.filter(milestone => milestone.team_id === activeTab)
+  }
 
-  // Memoize API calls
   const fetchData = useCallback(async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession()
@@ -573,11 +578,6 @@ export const MorningReview = React.memo(function MorningReview() {
     return milestone.tasks.filter(task => task.cycle === taskFilter)
   }
 
-  const getFilteredMilestones = () => {
-    if (activeTab === 'all') return milestones
-    return milestones.filter(milestone => milestone.team_id === activeTab)
-  }
-
   const getMilestoneCountForTeam = (teamId: string) => {
     return milestones.filter(m => m.team_id === teamId).length
   }
@@ -756,9 +756,11 @@ export const MorningReview = React.memo(function MorningReview() {
                 <div key={i} className="skeleton h-20 rounded-xl"></div>
               ))}
             </div>
-          ) : getFilteredMilestones().length > 0 ? (
+          ) : milestones.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {getFilteredMilestones().map((milestone) => {
+              {milestones
+                .filter(milestone => activeTab === 'all' || milestone.team_id === activeTab)
+                .map((milestone) => {
                 const daysUntil = getDaysUntilDue(milestone.due_date)
                 const isOverdue = daysUntil < 0
                 
@@ -1082,8 +1084,8 @@ export const MorningReview = React.memo(function MorningReview() {
                 </button>
               </div>
             </div>
-          ) : (
-            <div className="text-center py-8">
+              ) : (
+                <div className="text-center py-8">
               <div className="text-4xl mb-2">✅</div>
               <p className="subtext">No cards due today. Great work!</p>
             </div>

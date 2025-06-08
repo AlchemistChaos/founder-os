@@ -22,157 +22,67 @@ export async function GET(request: NextRequest) {
 
     const linearAPI = createLinearAPI(linearApiKey)
 
-    // Get projects and milestones
-    const [projects, milestones] = await Promise.all([
-      linearAPI.getProjects(),
-      linearAPI.getProjectMilestones()
-    ])
-
-    // Find the Summer Launch project
-    const summerLaunchProject = projects.find(p => 
-      p.name.toLowerCase().includes('summer launch')
+    // Get projects and their milestones
+    const projects = await linearAPI.getProjects()
+    
+    // Extract all milestones from projects
+    const allMilestones = projects.flatMap(project => 
+      project.milestones.nodes.map(milestone => ({
+        ...milestone,
+        project: {
+          id: project.id,
+          name: project.name
+        },
+        team: project.team
+      }))
     )
 
-    // Get milestones for Summer Launch project
-    const summerLaunchMilestones = milestones.filter(m => 
-      m.project.id === summerLaunchProject?.id
-    )
-
-    // Find Marketing+Community team ID
-    const teams = await linearAPI.getTeams()
-    const marketingTeam = teams.find(t => 
-      t.name.toLowerCase().includes('marketing') || 
-      t.key === 'MAR'
-    )
-
-    // Transform milestones to morning page format
-    const formattedMilestones = summerLaunchMilestones.map(milestone => {
-      const progress = calculateMilestoneProgress(milestone)
-      const status = getStatusFromProgress(progress)
-      const isOverdue = milestone.targetDate && new Date(milestone.targetDate) < new Date()
+    // Also get all issues to associate with milestones
+    const allIssues = await linearAPI.getIssues()
+    
+    // Create milestones with their tasks
+    const milestonesWithTasks = allMilestones.map(milestone => {
+      const tasks = allIssues.filter(issue => 
+        issue.projectMilestone?.id === milestone.id
+      ).map(issue => ({
+        id: issue.id,
+        identifier: issue.identifier,
+        title: issue.title,
+        state: issue.state,
+        assignee: issue.assignee,
+        priority: issue.priority,
+        dueDate: issue.dueDate,
+        url: issue.url,
+        labels: issue.labels?.nodes || []
+      }))
 
       return {
         id: milestone.id,
         title: milestone.name,
-        description: milestone.description || '',
-        progress,
-        status,
-        due_date: milestone.targetDate,
-        team: {
-          id: marketingTeam?.id || '',
-          name: 'Marketing+Community',
-          key: 'MAR',
-          icon: '📢',
-          color: 'blue'
-        },
-        project: {
-          id: milestone.project.id,
-          name: milestone.project.name
-        },
-        tasks: [], // Will be populated from issues if needed
-        cycle: determineCycle(milestone.targetDate),
-        priority: determinePriority(milestone),
-        overdue: isOverdue,
-        created_at: milestone.createdAt,
-        updated_at: milestone.updatedAt
+        description: milestone.description,
+        targetDate: milestone.targetDate,
+        sortOrder: milestone.sortOrder,
+        project_id: milestone.project.id,
+        project_name: milestone.project.name,
+        team_id: milestone.team.id,
+        team_name: milestone.team.name,
+        team_key: milestone.team.key,
+        taskCount: tasks.length,
+        tasks: tasks,
+        createdAt: milestone.createdAt,
+        updatedAt: milestone.updatedAt
       }
     })
 
-    // Get issues for the Summer Launch project to populate tasks
-    const issues = await linearAPI.getIssues(undefined, 200) // Explicitly set limit to 200
+    // Cache the response for 10 minutes (600000ms)
+    apiCache.set(cacheKey, milestonesWithTasks, 600000)
+
+    return NextResponse.json(milestonesWithTasks)
     
-    // Get both Summer Launch project issues AND all MAR team issues
-    const summerLaunchIssues = issues.filter(issue => 
-      issue.project?.id === summerLaunchProject?.id || 
-      issue.team?.key === 'MAR'  // Include all MAR team issues
-    )
-
-    // Group issues by milestone
-    const milestoneIssues = new Map()
-    const unassignedIssues = [] // For issues without milestones
-    
-    summerLaunchIssues.forEach(issue => {
-      // Create a fallback URL if Linear doesn't provide one
-      const fallbackUrl = issue.url || `https://linear.app/founderos/${issue.identifier}`
-      
-      const taskData = {
-        id: issue.id,
-        title: issue.title,
-        status: issue.state.name,
-        assignee: issue.assignee?.name,
-        priority: issue.priority,
-        due_date: issue.dueDate,
-        url: fallbackUrl
-      }
-      
-      if (issue.projectMilestone?.id) {
-        // Assign to milestone
-        if (!milestoneIssues.has(issue.projectMilestone.id)) {
-          milestoneIssues.set(issue.projectMilestone.id, [])
-        }
-        milestoneIssues.get(issue.projectMilestone.id).push(taskData)
-      } else {
-        // Task without milestone - add to unassigned
-        unassignedIssues.push(taskData)
-      }
-    })
-
-    // Add tasks to milestones
-    formattedMilestones.forEach(milestone => {
-      milestone.tasks = milestoneIssues.get(milestone.id) || []
-    })
-
-    // Create a virtual milestone for unassigned tasks with due dates
-    if (unassignedIssues.length > 0) {
-      const unassignedMilestone = {
-        id: 'unassigned-tasks',
-        title: 'Other Tasks',
-        description: 'Tasks not assigned to a specific milestone',
-        progress: 0,
-        status: 'in_progress',
-        due_date: null,
-        team: {
-          id: marketingTeam?.id || '',
-          name: 'Marketing+Community',
-          key: 'MAR',
-          icon: '📢',
-          color: 'blue'
-        },
-        project: {
-          id: 'unassigned',
-          name: 'Various Projects'
-        },
-        tasks: unassignedIssues,
-        cycle: 'Q3 2025',
-        priority: 'medium' as const,
-        overdue: false,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }
-      formattedMilestones.push(unassignedMilestone)
-    }
-
-    const responseData = {
-      success: true,
-      milestones: formattedMilestones,
-      project: summerLaunchProject,
-      team: marketingTeam,
-      count: formattedMilestones.length,
-      unassignedTasksCount: unassignedIssues.length
-    }
-
-    // Cache for 10 minutes (600000ms) instead of default 5 minutes
-    apiCache.set(cacheKey, responseData, 600000)
-
-    return NextResponse.json(responseData)
-
   } catch (error) {
-    console.error('Linear milestones API error:', error)
+    console.error('Error fetching Linear milestones:', error)
     return NextResponse.json(
-      { 
-        error: 'Failed to fetch Linear milestones',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
+      { error: 'Failed to fetch milestones' },
       { status: 500 }
     )
   }
