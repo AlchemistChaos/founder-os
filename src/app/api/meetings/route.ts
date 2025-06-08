@@ -3,7 +3,6 @@ import { getUser } from '@/lib/auth-utils'
 import { createClient } from '@supabase/supabase-js'
 import { Database } from '@/lib/database.types'
 import { apiCache, CACHE_KEYS, CACHE_TTL } from '@/lib/cache'
-import { apiCache, CACHE_KEYS, CACHE_TTL } from '@/lib/cache'
 
 const supabase = createClient<Database>(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -15,14 +14,6 @@ export async function GET(request: NextRequest) {
     const user = await getUser(request)
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    // Check cache first
-    const cacheKey = `${CACHE_KEYS.MEETINGS}:${user.id}`
-    const cachedData = apiCache.get(cacheKey)
-    
-    if (cachedData) {
-      return NextResponse.json(cachedData)
     }
 
     // Check cache first
@@ -82,8 +73,8 @@ export async function GET(request: NextRequest) {
       total: meetingsWithParticipants.length
     }
 
-    // Cache the response
-    apiCache.set(cacheKey, responseData, CACHE_TTL.MEETINGS)
+    // Cache the response for 5 minutes
+    apiCache.set(cacheKey, responseData, 300000)
 
     return NextResponse.json(responseData)
 
