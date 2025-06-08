@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Button } from '@/components/ui/button'
+// import { Button } from '@/components/ui/Button'
 import { Loader2, RefreshCw, Clock, CheckCircle, AlertCircle } from 'lucide-react'
 
 interface SyncStatus {
@@ -151,17 +151,16 @@ export default function LinearSyncScheduler({ userId }: { userId: string }) {
   }
 
   return (
-    <div className="p-4 border rounded-lg bg-card">
+    <div className="p-4 border border-neutral-700 rounded-lg bg-neutral-800">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold flex items-center gap-2">
           <RefreshCw className="w-4 h-4" />
           Linear Sync
         </h3>
-        <Button
+        <button
           onClick={runManualSync}
           disabled={syncStatus.isManualSyncing}
-          size="sm"
-          variant="outline"
+          className="btn-secondary px-3 py-2 text-sm disabled:opacity-50"
         >
           {syncStatus.isManualSyncing ? (
             <>
@@ -174,10 +173,10 @@ export default function LinearSyncScheduler({ userId }: { userId: string }) {
               Sync Now
             </>
           )}
-        </Button>
+        </button>
       </div>
 
-      <div className="space-y-2 text-sm text-muted-foreground">
+      <div className="space-y-2 text-sm text-gray-600">
         <div className="flex items-center gap-2">
           {syncStatus.isScheduled ? (
             <CheckCircle className="w-4 h-4 text-green-500" />
@@ -206,7 +205,7 @@ export default function LinearSyncScheduler({ userId }: { userId: string }) {
       </div>
 
       {syncMessage && (
-        <div className="mt-3 p-2 bg-muted rounded text-sm">
+        <div className="mt-3 p-2 bg-gray-100 rounded text-sm text-gray-700">
           {syncMessage}
         </div>
       )}
