@@ -57,34 +57,43 @@ interface Team {
   name: string
   color: string
   icon: string
+  key?: string
 }
 
 interface Milestone {
   id: string
   title: string
   description: string
-  due_date: string
+  due_date: string | null
   status: 'not_started' | 'in_progress' | 'completed'
   priority: 'high' | 'medium' | 'low'
   cycle?: string
-  team_id: string
+  team_id?: string
   team: Team
   tasks: Task[]
-  progress_percentage: number
+  progress: number
+  progress_percentage?: number // Backward compatibility
   created_at: string
+  updated_at?: string
+  overdue?: boolean | null
+  project?: {
+    id: string
+    name: string
+  }
 }
 
 interface Task {
   id: string
-  milestone_id: string
+  milestone_id?: string
   title: string
   description?: string
-  status: 'todo' | 'in_progress' | 'completed'
-  priority: 'high' | 'medium' | 'low'
+  status: string // Linear status names are more varied
+  priority: number | 'high' | 'medium' | 'low'
   cycle?: string
   due_date?: string
   assignee?: string
-  created_at: string
+  created_at?: string
+  url?: string
 }
 
 export function MorningReview() {
@@ -107,6 +116,37 @@ export function MorningReview() {
     month: 'long', 
     day: 'numeric' 
   }))
+
+  // Helper functions for Linear data transformation
+  const getTeamColor = (teamKey: string) => {
+    const colors: Record<string, string> = {
+      'MAR': 'bg-blue-100 text-blue-800 border-blue-200',
+      'ENG': 'bg-purple-100 text-purple-800 border-purple-200',
+      'PROD': 'bg-green-100 text-green-800 border-green-200',
+      'DES': 'bg-pink-100 text-pink-800 border-pink-200',
+      'BIZ': 'bg-orange-100 text-orange-800 border-orange-200',
+      'OPS': 'bg-yellow-100 text-yellow-800 border-yellow-200'
+    }
+    return colors[teamKey] || 'bg-gray-100 text-gray-800 border-gray-200'
+  }
+
+  const mapLinearStatusToLocal = (linearStatus: string): string => {
+    const statusMap: Record<string, string> = {
+      'Todo': 'todo',
+      'In Progress': 'in_progress',
+      'In Review': 'in_progress',
+      'Done': 'completed',
+      'Completed': 'completed',
+      'Backlog': 'todo'
+    }
+    return statusMap[linearStatus] || 'todo'
+  }
+
+  const mapLinearPriorityToLocal = (linearPriority: number): 'high' | 'medium' | 'low' => {
+    if (linearPriority >= 2) return 'high'
+    if (linearPriority >= 1) return 'medium'
+    return 'low'
+  }
 
   // Load team preferences from localStorage
   useEffect(() => {
@@ -158,29 +198,79 @@ export function MorningReview() {
           console.log('Flashcards fetch error:', error)
         }
 
-        // Define available teams
+        // Define available teams (matching Linear teams)
         const teams: Team[] = [
-          { id: 'engineering', name: 'Engineering', color: 'bg-blue-100 text-blue-800 border-blue-200', icon: '⚙️' },
-          { id: 'product', name: 'Product', color: 'bg-purple-100 text-purple-800 border-purple-200', icon: '🎯' },
-          { id: 'marketing', name: 'Marketing', color: 'bg-green-100 text-green-800 border-green-200', icon: '📢' },
-          { id: 'sales', name: 'Sales', color: 'bg-orange-100 text-orange-800 border-orange-200', icon: '💼' },
-          { id: 'design', name: 'Design', color: 'bg-pink-100 text-pink-800 border-pink-200', icon: '🎨' },
-          { id: 'ops', name: 'Operations', color: 'bg-yellow-100 text-yellow-800 border-yellow-200', icon: '⚡' }
+          { id: 'mar', name: 'Marketing+Community', color: 'bg-blue-100 text-blue-800 border-blue-200', icon: '📢', key: 'MAR' },
+          { id: 'eng', name: 'Engineering', color: 'bg-purple-100 text-purple-800 border-purple-200', icon: '⚙️', key: 'ENG' },
+          { id: 'product', name: 'Product', color: 'bg-green-100 text-green-800 border-green-200', icon: '🎯', key: 'PROD' },
+          { id: 'design', name: 'Design', color: 'bg-pink-100 text-pink-800 border-pink-200', icon: '🎨', key: 'DES' },
+          { id: 'biz', name: 'Business', color: 'bg-orange-100 text-orange-800 border-orange-200', icon: '💼', key: 'BIZ' },
+          { id: 'ops', name: 'Operations', color: 'bg-yellow-100 text-yellow-800 border-yellow-200', icon: '⚡', key: 'OPS' }
         ]
         setAvailableTeams(teams)
 
         // Set default selected teams if none are saved
         if (selectedTeams.length === 0) {
-          const defaultTeams = ['engineering', 'product', 'marketing']
+          const defaultTeams = ['mar', 'eng', 'product']
           setSelectedTeams(defaultTeams)
-          setActiveTab('engineering')
+          setActiveTab('mar')
         } else {
           setActiveTab(selectedTeams[0] || 'all')
         }
 
-        // Fetch milestones (mock data for now - we'll create API later)
+        // Fetch real milestones from Linear Summer Launch project
         try {
-          // For now, using mock data until we create the API
+          const milestonesResponse = await fetch('/api/integrations/linear/milestones', { headers })
+          if (milestonesResponse.ok) {
+            const milestonesData = await milestonesResponse.json()
+            if (milestonesData.success) {
+              // Transform Linear milestones to match our interface
+              const linearMilestones: Milestone[] = milestonesData.milestones.map((milestone: any) => ({
+                id: milestone.id,
+                title: milestone.title,
+                description: milestone.description,
+                due_date: milestone.due_date,
+                status: milestone.status,
+                priority: milestone.priority,
+                cycle: milestone.cycle,
+                team_id: milestone.team.key.toLowerCase(),
+                team: {
+                  id: milestone.team.key.toLowerCase(),
+                  name: milestone.team.name,
+                  key: milestone.team.key,
+                  icon: milestone.team.icon,
+                  color: getTeamColor(milestone.team.key)
+                },
+                tasks: milestone.tasks.map((task: any) => ({
+                  id: task.id,
+                  title: task.title,
+                  status: mapLinearStatusToLocal(task.status),
+                  priority: mapLinearPriorityToLocal(task.priority),
+                  cycle: milestone.cycle,
+                  assignee: task.assignee,
+                  created_at: milestone.created_at
+                })),
+                progress: milestone.progress,
+                progress_percentage: milestone.progress,
+                created_at: milestone.created_at,
+                updated_at: milestone.updated_at,
+                overdue: milestone.overdue,
+                project: milestone.project
+              }))
+              setMilestones(linearMilestones)
+            } else {
+              console.log('Failed to fetch milestones from Linear:', milestonesData.error)
+              // Fallback to empty milestones
+              setMilestones([])
+            }
+          } else {
+            console.log('Milestones API failed:', milestonesResponse.status)
+            // Fallback to empty milestones  
+            setMilestones([])
+          }
+        } catch (error) {
+          console.log('Milestones fetch error:', error)
+          // For backward compatibility, provide empty milestones
           const mockMilestones: Milestone[] = [
             {
               id: '1',
