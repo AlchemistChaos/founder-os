@@ -53,16 +53,28 @@ export async function POST(request: NextRequest) {
     console.log(`Processing ${entriesWithUser.length} Linear issues...`)
 
     // Insert entries into database
-    const { data, error } = await supabaseAdmin
+    // First, check for existing entries to avoid duplicates
+    const existingEntries = await supabaseAdmin
       .from('entries')
-      .upsert(
-        entriesWithUser,
-        { 
-          onConflict: 'user_id,source_url',
-          ignoreDuplicates: false 
-        }
-      )
-      .select()
+      .select('source_url')
+      .eq('user_id', user_id)
+      .in('source_url', entriesWithUser.map(e => e.source_url))
+
+    const existingUrls = new Set(existingEntries.data?.map(e => e.source_url) || [])
+    const newEntries = entriesWithUser.filter(entry => !existingUrls.has(entry.source_url))
+
+    let data = null
+    let error = null
+
+    if (newEntries.length > 0) {
+      const result = await supabaseAdmin
+        .from('entries')
+        .insert(newEntries)
+        .select()
+      
+      data = result.data
+      error = result.error
+    }
 
     if (error) {
       console.error('Database error:', error)
@@ -82,7 +94,7 @@ export async function POST(request: NextRequest) {
         last_sync_at: new Date().toISOString(),
         config: {
           api_key_configured: true,
-          last_sync_count: entriesWithUser.length
+          last_sync_count: newEntries.length
         }
       }, {
         onConflict: 'user_id,service'
@@ -94,8 +106,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Successfully synced ${entriesWithUser.length} Linear issues`,
-      synced: entriesWithUser.length,
+      message: `Successfully synced ${newEntries.length} Linear issues (${existingUrls.size} duplicates skipped)`,
+      synced: newEntries.length,
+      duplicates_skipped: existingUrls.size,
       issues: issues.map(issue => ({
         identifier: issue.identifier,
         title: issue.title,

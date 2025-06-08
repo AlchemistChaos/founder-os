@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { supabase } from '@/lib/supabase'
+import LinearSyncScheduler from '@/components/LinearSyncScheduler'
 
 interface Integration {
   id: string
@@ -309,6 +310,11 @@ export default function IntegrationsPage() {
           Connect your tools to automatically sync updates into FounderOS
         </p>
       </div>
+
+      {/* Linear Sync Scheduler - Only show if Linear is connected */}
+      {getServiceIntegration('linear') && (
+        <LinearSyncScheduler userId={user.id} />
+      )}
 
       {/* Quick Actions */}
       <Card className="mb-4 md:mb-6">

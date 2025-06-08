@@ -1,143 +1,171 @@
-# Linear API Integration Setup Guide
+# Linear API Integration Setup
 
-This guide shows you how to set up Linear integration using the **API approach** (much simpler than webhooks!).
+## Overview
 
-## ✅ Why API Instead of Webhooks?
+FounderOS integrates with Linear using their GraphQL API to automatically sync issues, comments, and project data into your daily entries. This integration runs **automatically twice daily** and provides a manual sync option.
 
-- **Much simpler**: No public URLs needed
-- **Easier development**: Test locally without ngrok
-- **Better control**: You decide when to sync data
-- **Simpler debugging**: Standard API calls instead of webhook security
+## Automatic Sync Schedule
 
-## Step 1: Add Your API Key
+- **Morning Sync**: 8:30 AM daily
+- **Evening Sync**: 9:30 PM daily
+- **Manual Sync**: Available via UI button in /integrations
 
-Add this to your `.env` file:
+## Quick Setup
 
-```bash
-# Linear API Integration  
-LINEAR_API_KEY=your_linear_api_key_here
-```
+1. **Get your Linear API key**:
+   - Go to Linear Settings → API → Personal API keys
+   - Create a new key with appropriate scopes
+   - Copy the key (starts with `lin_api_`)
 
-## Step 2: Test the Connection
+2. **Add to environment**:
+   ```bash
+   # Add to your .env.local file
+   LINEAR_API_KEY=lin_api_your_key_here
+   ```
 
-Run the test script to verify everything works:
+3. **Test the integration**:
+   ```bash
+   node test-linear-sync-schedule.js
+   ```
 
-```bash
-# Make sure your dev server is running
-npm run dev
-
-# In another terminal, test the API
-node test-linear-api.js
-```
-
-You should see:
-- ✅ Your Linear user info
-- 🏢 Your teams
-- 📋 Recent issues
-
-## Step 3: Sync Your Data
-
-### Manual Sync (for testing)
-
-```bash
-curl -X POST http://localhost:3000/api/integrations/linear/sync \
-  -H "Content-Type: application/json" \
-  -d '{"user_id": "your-user-id", "days": 7}'
-```
-
-### Check Sync Status
-
-```bash
-curl "http://localhost:3000/api/integrations/linear/sync?user_id=your-user-id"
-```
+4. **Visit the integrations page** at `/integrations` to:
+   - See the automatic sync status
+   - Use the manual sync button
+   - Monitor sync history
 
 ## API Endpoints
 
-### 🧪 Test Connection
-**GET** `/api/integrations/linear/test`
+### Scheduled Sync
+- **POST** `/api/integrations/linear/schedule`
+  - Runs automatic sync for all users with Linear integrations
+  - Called by Vercel cron jobs twice daily
+  - Returns sync results for all users
 
-Returns your user info, teams, and recent issues.
+### Manual Sync  
+- **POST** `/api/integrations/linear/sync`
+  - Triggers immediate sync for specific user
+  - Used by the manual sync button
+  - Requires `user_id` in request body
 
-### 🔄 Sync Issues  
-**POST** `/api/integrations/linear/sync`
+### Sync Schedule Info
+- **GET** `/api/integrations/linear/schedule`
+  - Returns next scheduled sync time
+  - Shows sync schedule and timezone info
+  - Used by UI to display countdown
+
+### Test Connection
+- **GET** `/api/integrations/linear/test`
+  - Tests Linear API connection
+  - Returns user info and recent issues
+  - Useful for debugging
+
+## Data Sync
+
+The integration syncs:
+
+- **Issues**: Title, description, status, priority, assignee
+- **Comments**: Issue comments and updates
+- **Projects**: Project information and cycles
+- **Teams**: Team structure and membership
+
+All data is processed into FounderOS entries with:
+- Proper tagging by team and project
+- Source URLs for easy navigation back to Linear
+- Structured metadata for filtering and search
+
+## UI Features
+
+Visit `/integrations` to access:
+
+1. **Sync Status Card**:
+   - Shows if auto-sync is active
+   - Displays next sync time
+   - Shows last sync timestamp
+
+2. **Manual Sync Button**:
+   - Triggers immediate sync
+   - Shows sync progress
+   - Displays results
+
+3. **Sync History**:
+   - View recent sync activity
+   - Monitor sync success/failure
+   - Track synced item counts
+
+## Production Deployment
+
+For Vercel deployment, cron jobs are automatically configured:
 
 ```json
 {
-  "user_id": "your-supabase-user-id",
-  "days": 7
+  "crons": [
+    {
+      "path": "/api/integrations/linear/schedule",
+      "schedule": "30 8 * * *"
+    },
+    {
+      "path": "/api/integrations/linear/schedule", 
+      "schedule": "30 21 * * *"
+    }
+  ]
 }
 ```
 
-Fetches issues from the last N days and stores them in your FounderOS database.
+## Local Development
 
-### 📊 Check Status
-**GET** `/api/integrations/linear/sync?user_id=your-user-id`
+For local testing of scheduled syncs:
 
-Returns integration status and count of synced Linear entries.
+```bash
+# Test sync schedule info
+curl http://localhost:3000/api/integrations/linear/schedule
 
-## What Gets Synced
+# Test manual sync  
+curl -X POST http://localhost:3000/api/integrations/linear/sync \
+  -H "Content-Type: application/json" \
+  -d '{"user_id":"your-user-id"}'
 
-- **Issues**: Title, description, state, assignee, team, labels
-- **Comments**: All comments on each issue  
-- **Metadata**: Priority, creation/update dates, Linear URLs
-- **Tags**: Automatically tagged by team, state, and labels
-
-## Example Synced Entry
-
-```json
-{
-  "type": "linear",
-  "content": "# PROJ-123: Fix the login bug\n\nUsers can't log in with...",
-  "metadata": {
-    "linear_id": "abc123",
-    "identifier": "PROJ-123", 
-    "state": "In Progress",
-    "assignee": "John Doe",
-    "team": "Engineering",
-    "priority": 2,
-    "labels": ["bug", "urgent"],
-    "url": "https://linear.app/issue/abc123"
-  },
-  "tags": ["linear", "proj", "in-progress", "bug", "urgent"],
-  "source_url": "https://linear.app/issue/abc123"
-}
+# Run comprehensive tests
+node test-linear-sync-schedule.js
 ```
 
-## Automation Options
+## Troubleshooting
 
-### Option 1: Manual Sync
-Just run the sync API when you want to pull latest data.
+### Sync Not Running
+1. Check LINEAR_API_KEY is set
+2. Verify user has Linear integration record
+3. Check console logs for errors
+4. Test API connection manually
 
-### Option 2: Scheduled Sync  
-Set up a cron job or scheduled function to sync every hour/day:
+### Missing Data
+1. Verify API key has correct scopes
+2. Check team access permissions
+3. Ensure issues exist in date range
+4. Review sync logs for filtering
 
-```javascript
-// Run this on a schedule
-await fetch('/api/integrations/linear/sync', {
-  method: 'POST',
-  body: JSON.stringify({ user_id: 'user-123', days: 1 })
-})
+### Schedule Issues
+1. Check timezone settings
+2. Verify cron job configuration
+3. Test schedule endpoint manually
+4. Monitor Vercel function logs
+
+## Environment Variables
+
+```bash
+# Required
+LINEAR_API_KEY=lin_api_your_key_here
+
+# Required for database
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+
+# Optional for production
+NEXT_PUBLIC_APP_URL=https://your-domain.com
 ```
 
-### Option 3: UI Integration
-Add a "Sync Linear" button to your FounderOS UI.
+## Security Notes
 
-## Benefits vs Webhooks
-
-| Feature | API Approach | Webhook Approach |
-|---------|-------------|------------------|
-| Setup complexity | ⭐ Simple | ⭐⭐⭐ Complex |
-| Public URL needed | ❌ No | ✅ Yes |
-| Real-time updates | ⭐⭐ Near real-time | ⭐⭐⭐ Real-time |
-| Development ease | ⭐⭐⭐ Easy | ⭐ Hard |
-| Security concerns | ⭐⭐⭐ Minimal | ⭐⭐ More complex |
-| Testing | ⭐⭐⭐ Very easy | ⭐ Difficult |
-
-## Next Steps
-
-1. **Test the integration** with the test script
-2. **Sync some data** using the sync endpoint  
-3. **Check your FounderOS** to see Linear issues appear
-4. **Set up automation** if you want regular syncing
-
-This API approach is **much more practical** for development and gives you everything you need without the webhook complexity! 🚀 
+- API keys are stored in environment variables only
+- No API keys are committed to git
+- Scheduled sync uses service role for database access
+- Manual sync requires user authentication
+- All synced data respects Linear's permission model 

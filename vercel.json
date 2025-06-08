@@ -1,8 +1,17 @@
 {
+  "functions": {
+    "src/app/api/**/*.ts": {
+      "maxDuration": 30
+    }
+  },
   "crons": [
     {
-      "path": "/api/integrations/process-jobs",
-      "schedule": "*/5 * * * *"
+      "path": "/api/integrations/linear/schedule",
+      "schedule": "30 8 * * *"
+    },
+    {
+      "path": "/api/integrations/linear/schedule",
+      "schedule": "30 21 * * *"
     }
   ]
 }
