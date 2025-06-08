@@ -282,7 +282,7 @@ export class LinearAPI {
   }
 
   // Get issues for a team or all teams
-  async getIssues(teamId?: string, limit: number = 50): Promise<LinearIssue[]> {
+  async getIssues(teamId?: string, limit: number = 200): Promise<LinearIssue[]> {
     const query = `
       query GetIssues($first: Int, $teamFilter: IssueFilter) {
         issues(
@@ -318,6 +318,7 @@ export class LinearAPI {
               }
             }
             priority
+            dueDate
             createdAt
             updatedAt
             url
@@ -404,6 +405,7 @@ export class LinearAPI {
               }
             }
             priority
+            dueDate
             createdAt
             updatedAt
             url
@@ -479,6 +481,7 @@ export class LinearAPI {
               }
             }
             priority
+            dueDate
             createdAt
             updatedAt
             url

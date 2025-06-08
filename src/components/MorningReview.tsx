@@ -141,8 +141,13 @@ export function MorningReview() {
       'In Review': 'in_progress',
       'Done': 'completed',
       'Completed': 'completed',
-      'Backlog': 'todo'
+      'Backlog': 'backlog',
+      'Triage': 'todo',
+      'Started': 'in_progress',
+      'Blocked': 'blocked',
+      'Cancelled': 'cancelled'
     }
+    console.log(`Mapping Linear status "${linearStatus}" to "${statusMap[linearStatus] || 'todo'}"`)
     return statusMap[linearStatus] || 'todo'
   }
 
@@ -179,10 +184,13 @@ export function MorningReview() {
       friday: []
     }
     
+    console.log('Processing weekly tasks for week starting:', startOfBusinessWeek.toDateString())
+    
     milestones.forEach(milestone => {
       milestone.tasks.forEach(task => {
         if (task.due_date) {
           const taskDate = new Date(task.due_date)
+          console.log(`Task "${task.title}" due on:`, taskDate.toDateString())
           
           // Check if task is due Monday-Friday of the target week
           for (let i = 0; i < 5; i++) {
@@ -192,6 +200,7 @@ export function MorningReview() {
             // Check if task is due on this specific day
             if (taskDate.toDateString() === dayDate.toDateString()) {
               const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
+              console.log(`Adding task "${task.title}" to ${dayNames[i]}`)
               weeklyTasksMap[dayNames[i]].push({
                 ...task,
                 milestone_title: milestone.title,
@@ -207,14 +216,59 @@ export function MorningReview() {
     return weeklyTasksMap
   }
 
+  const getWeekDates = () => {
+    const today = new Date()
+    const currentDayOfWeek = today.getDay() // 0 = Sunday, 1 = Monday, etc.
+    
+    // If today is Sunday, show dates for the coming business week
+    // Otherwise, show dates for the current business week
+    let startOfBusinessWeek: Date
+    
+    if (currentDayOfWeek === 0) {
+      // Today is Sunday, show next week's dates
+      startOfBusinessWeek = new Date(today)
+      startOfBusinessWeek.setDate(today.getDate() + 1) // Next Monday
+    } else {
+      // Show current week's business days
+      startOfBusinessWeek = new Date(today)
+      startOfBusinessWeek.setDate(today.getDate() - (currentDayOfWeek - 1)) // This Monday
+    }
+    
+    const weekDates: {[key: string]: { date: Date, formatted: string }} = {}
+    const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
+    
+    for (let i = 0; i < 5; i++) {
+      const dayDate = new Date(startOfBusinessWeek)
+      dayDate.setDate(startOfBusinessWeek.getDate() + i)
+      
+      // Format as "Mon 10" (abbreviated day + date number only)
+      const formatted = dayDate.toLocaleDateString('en-US', { 
+        weekday: 'short',
+        day: 'numeric' 
+      })
+      
+      weekDates[dayNames[i]] = {
+        date: dayDate,
+        formatted: formatted
+      }
+    }
+    
+    return weekDates
+  }
+
   const getActiveTasksWithoutDueDates = (milestones: Milestone[]) => {
     const activeTasks: Task[] = []
-    const activeStatuses = ['backlog', 'todo', 'in_progress', 'review']
+    // Include more Linear statuses to catch all active tasks
+    const activeStatuses = ['backlog', 'todo', 'in_progress', 'review', 'in review', 'started', 'doing', 'blocked', 'triage']
+    
+    console.log('Filtering active tasks from milestones:', milestones.length)
     
     milestones.forEach(milestone => {
       milestone.tasks.forEach(task => {
+        console.log(`Task "${task.title}" - due_date: ${task.due_date}, status: "${task.status}"`)
         // Only include tasks without due dates that are in active statuses
         if (!task.due_date && activeStatuses.includes(task.status.toLowerCase())) {
+          console.log(`Adding active task: "${task.title}" (${task.status})`)
           activeTasks.push({
             ...task,
             milestone_title: milestone.title,
@@ -224,6 +278,7 @@ export function MorningReview() {
       })
     })
     
+    console.log('Total active tasks found:', activeTasks.length)
     return activeTasks
   }
 
@@ -237,7 +292,8 @@ export function MorningReview() {
       'completed': 'border-green-200 bg-green-50 text-green-700',
       'review': 'border-purple-200 bg-purple-50 text-purple-700',
       'blocked': 'border-red-200 bg-red-50 text-red-700',
-      'cancelled': 'border-gray-200 bg-gray-100 text-gray-600'
+      'cancelled': 'border-gray-200 bg-gray-100 text-gray-600',
+      'triage': 'border-orange-200 bg-orange-50 text-orange-700'
     }
     return statusColors[status.toLowerCase()] || statusColors['todo']
   }
@@ -371,9 +427,24 @@ export function MorningReview() {
                 project: milestone.project
               }))
               setMilestones(linearMilestones)
+              // Debug: Log all tasks and their due dates
+              console.log('=== DEBUG: All Linear Milestones and Tasks ===')
+              linearMilestones.forEach(milestone => {
+                console.log(`Milestone: "${milestone.title}" (${milestone.tasks.length} tasks)`)
+                milestone.tasks.forEach(task => {
+                  console.log(`  - Task: "${task.title}" | due_date: ${task.due_date} | status: ${task.status}`)
+                })
+              })
+              
               // Set weekly tasks and active tasks without due dates
-              setWeeklyTasks(getWeeklyTasks(linearMilestones))
-              setActiveTasks(getActiveTasksWithoutDueDates(linearMilestones))
+              const weeklyTasksResult = getWeeklyTasks(linearMilestones)
+              const activeTasksResult = getActiveTasksWithoutDueDates(linearMilestones)
+              
+              console.log('=== Weekly Tasks Result ===', weeklyTasksResult)
+              console.log('=== Active Tasks Result ===', activeTasksResult.length, 'tasks')
+              
+              setWeeklyTasks(weeklyTasksResult)
+              setActiveTasks(activeTasksResult)
             } else {
               console.log('Failed to fetch milestones from Linear:', milestonesData.error)
               // Fallback to empty milestones
@@ -579,12 +650,15 @@ export function MorningReview() {
           <div className="grid grid-cols-5 gap-3">
             {['monday', 'tuesday', 'wednesday', 'thursday', 'friday'].map(day => {
               const dayTasks = weeklyTasks[day] || []
-              const capitalizedDay = day.charAt(0).toUpperCase() + day.slice(1)
+              const weekDates = getWeekDates()
+              const dayInfo = weekDates[day]
               
               return (
                 <div key={day} className="bg-white border border-neutral-200 rounded-xl p-3">
                   <div className="text-sm font-medium text-neutral-700 mb-2 text-center">
-                    {capitalizedDay}
+                    <div className="font-semibold">
+                      {dayInfo?.formatted || day.charAt(0).toUpperCase() + day.slice(1)}
+                    </div>
                   </div>
                   
                   {dayTasks.length > 0 ? (

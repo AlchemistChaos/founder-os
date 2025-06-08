@@ -74,32 +74,72 @@ export async function GET(request: NextRequest) {
     })
 
     // Get issues for the Summer Launch project to populate tasks
-    const issues = await linearAPI.getIssues()
+    const issues = await linearAPI.getIssues(undefined, 200) // Explicitly set limit to 200
+    
+    // Debug: Check for MAR-583 before filtering
+    const mar583 = issues.find(issue => issue.identifier === 'MAR-583')
+    if (mar583) {
+      console.log(`🔍 FOUND MAR-583 BEFORE FILTERING:`)
+      console.log(`   identifier: ${mar583.identifier}`)
+      console.log(`   title: ${mar583.title}`)
+      console.log(`   due_date: ${mar583.dueDate}`)
+      console.log(`   team: ${mar583.team?.key} (${mar583.team?.name})`)
+      console.log(`   project: ${mar583.project?.name || 'NONE'}`)
+      console.log(`   Summer Launch Project ID: ${summerLaunchProject?.id}`)
+      console.log(`   Issue Project ID: ${mar583.project?.id}`)
+      console.log(`   Matches Summer Launch? ${mar583.project?.id === summerLaunchProject?.id}`)
+      console.log(`   Matches MAR team? ${mar583.team?.key === 'MAR'}`)
+    } else {
+      console.log(`❌ MAR-583 NOT FOUND in Linear API response at all!`)
+      console.log(`Total issues returned: ${issues.length}`)
+      console.log(`First 5 identifiers: ${issues.slice(0, 5).map(i => i.identifier).join(', ')}`)
+      console.log(`Last 5 identifiers: ${issues.slice(-5).map(i => i.identifier).join(', ')}`)
+    }
+    
+    // Get both Summer Launch project issues AND all MAR team issues
     const summerLaunchIssues = issues.filter(issue => 
-      issue.project?.id === summerLaunchProject?.id
+      issue.project?.id === summerLaunchProject?.id || 
+      issue.team?.key === 'MAR'  // Include all MAR team issues
     )
 
     // Group issues by milestone
     const milestoneIssues = new Map()
+    const unassignedIssues = [] // For issues without milestones
+    
     summerLaunchIssues.forEach(issue => {
+      // Create a fallback URL if Linear doesn't provide one
+      const fallbackUrl = issue.url || `https://linear.app/founderos/${issue.identifier}`
+      
+      const taskData = {
+        id: issue.id,
+        title: issue.title,
+        status: issue.state.name,
+        assignee: issue.assignee?.name,
+        priority: issue.priority,
+        due_date: issue.dueDate,
+        url: fallbackUrl
+      }
+      
+      // Enhanced debugging for specific tasks
+      if (issue.identifier === 'MAR-583' || issue.identifier === 'MAR-598' || issue.dueDate) {
+        console.log(`🔍 TASK DEBUG - ${issue.identifier}: "${issue.title}"`)
+        console.log(`   due_date: ${issue.dueDate}`)
+        console.log(`   milestone: ${issue.projectMilestone?.name || 'NONE'}`)
+        console.log(`   project: ${issue.project?.name || 'NONE'}`)
+        console.log(`   team: ${issue.team?.key}`)
+      }
+      
       if (issue.projectMilestone?.id) {
+        // Assign to milestone
         if (!milestoneIssues.has(issue.projectMilestone.id)) {
           milestoneIssues.set(issue.projectMilestone.id, [])
         }
-        // Create a fallback URL if Linear doesn't provide one
-        const fallbackUrl = issue.url || `https://linear.app/founderos/${issue.identifier}`
-        
-        milestoneIssues.get(issue.projectMilestone.id).push({
-          id: issue.id,
-          title: issue.title,
-          status: issue.state.name,
-          assignee: issue.assignee?.name,
-          priority: issue.priority,
-          due_date: issue.dueDate,
-          url: fallbackUrl
-        })
-        // console.log('Issue URL:', issue.title, '→', issue.url, 'fallback:', fallbackUrl)
+        milestoneIssues.get(issue.projectMilestone.id).push(taskData)
+      } else {
+        // Task without milestone - add to unassigned
+        unassignedIssues.push(taskData)
       }
+      // console.log('Issue URL:', issue.title, '→', issue.url, 'fallback:', fallbackUrl)
     })
 
     // Add tasks to milestones
@@ -114,12 +154,43 @@ export async function GET(request: NextRequest) {
     //   tasks: m.tasks.map(t => ({ title: t.title, url: t.url }))
     // })))
 
+    // Create a virtual milestone for unassigned tasks with due dates
+    if (unassignedIssues.length > 0) {
+      const unassignedMilestone = {
+        id: 'unassigned-tasks',
+        title: 'Other Tasks',
+        description: 'Tasks not assigned to a specific milestone',
+        progress: 0,
+        status: 'in_progress',
+        due_date: null,
+        team: {
+          id: marketingTeam?.id || '',
+          name: 'Marketing+Community',
+          key: 'MAR',
+          icon: '📢',
+          color: 'blue'
+        },
+        project: {
+          id: 'unassigned',
+          name: 'Various Projects'
+        },
+        tasks: unassignedIssues,
+        cycle: 'Q3 2025',
+        priority: 'medium' as const,
+        overdue: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+      formattedMilestones.push(unassignedMilestone)
+    }
+
     return NextResponse.json({
       success: true,
       milestones: formattedMilestones,
       project: summerLaunchProject,
       team: marketingTeam,
-      count: formattedMilestones.length
+      count: formattedMilestones.length,
+      unassignedTasksCount: unassignedIssues.length
     })
 
   } catch (error) {
