@@ -16,7 +16,7 @@ export function Navigation() {
     { href: '/', label: 'Morning', icon: '🌅' },
     { href: '/flashcards', label: 'Flashcards', icon: '🧠' },
     { href: '/clips', label: 'Clips', icon: '📎' },
-    { href: '/nightly', label: 'Nightly', icon: '🌙' },
+    { href: '/all-flashcards', label: 'All Flashcards', icon: '📚' },
     { href: '/insights', label: 'Insights', icon: '🎯' },
     { href: '/integrations', label: 'Integrations', icon: '🔌' },
   ]
