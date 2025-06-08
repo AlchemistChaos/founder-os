@@ -232,6 +232,56 @@ export interface Database {
           created_at?: string
         }
       }
+      webhook_events: {
+        Row: {
+          id: string
+          service: 'linear' | 'slack' | 'google' | 'fireflies'
+          event_type: string
+          action: string
+          external_id: string
+          data: Json
+          url: string | null
+          processed: boolean
+          processed_at: string | null
+          error_message: string | null
+          webhook_id: string | null
+          delivery_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          service: 'linear' | 'slack' | 'google' | 'fireflies'
+          event_type: string
+          action: string
+          external_id: string
+          data: Json
+          url?: string | null
+          processed?: boolean
+          processed_at?: string | null
+          error_message?: string | null
+          webhook_id?: string | null
+          delivery_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          service?: 'linear' | 'slack' | 'google' | 'fireflies'
+          event_type?: string
+          action?: string
+          external_id?: string
+          data?: Json
+          url?: string | null
+          processed?: boolean
+          processed_at?: string | null
+          error_message?: string | null
+          webhook_id?: string | null
+          delivery_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
