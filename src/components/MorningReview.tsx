@@ -349,10 +349,7 @@ export function MorningReview() {
               }))
               setMilestones(linearMilestones)
               // Set weekly tasks
-              const weeklyTasksResult = getWeeklyTasks(linearMilestones)
-              console.log('Weekly tasks result:', weeklyTasksResult)
-              console.log('First milestone tasks:', linearMilestones[0]?.tasks)
-              setWeeklyTasks(weeklyTasksResult)
+              setWeeklyTasks(getWeeklyTasks(linearMilestones))
             } else {
               console.log('Failed to fetch milestones from Linear:', milestonesData.error)
               // Fallback to empty milestones
