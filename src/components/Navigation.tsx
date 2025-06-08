@@ -14,7 +14,7 @@ export function Navigation() {
 
   const navItems = [
     { href: '/', label: 'Morning', icon: '🌅' },
-    { href: '/flashcards', label: 'Flashcards', icon: '🧠' },
+    { href: '/flashcards', label: 'Nightly Review', icon: '🧠' },
     { href: '/clips', label: 'Clips', icon: '📎' },
     { href: '/all-flashcards', label: 'All Flashcards', icon: '📚' },
     { href: '/insights', label: 'Insights', icon: '🎯' },
