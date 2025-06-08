@@ -52,12 +52,42 @@ interface AIInsight {
   interest_level?: string
 }
 
+interface Milestone {
+  id: string
+  title: string
+  description: string
+  due_date: string
+  status: 'not_started' | 'in_progress' | 'completed'
+  priority: 'high' | 'medium' | 'low'
+  cycle?: string
+  tasks: Task[]
+  progress_percentage: number
+  created_at: string
+}
+
+interface Task {
+  id: string
+  milestone_id: string
+  title: string
+  description?: string
+  status: 'todo' | 'in_progress' | 'completed'
+  priority: 'high' | 'medium' | 'low'
+  cycle?: string
+  due_date?: string
+  assignee?: string
+  created_at: string
+}
+
 export function MorningReview() {
   const [flashcardsDue, setFlashcardsDue] = useState<FlashcardDue[]>([])
   const [businessUpdates, setBusinessUpdates] = useState<BusinessUpdate[]>([])
   const [meetings, setMeetings] = useState<Meeting[]>([])
   const [aiInsights, setAiInsights] = useState<AIInsight[]>([])
+  const [milestones, setMilestones] = useState<Milestone[]>([])
+  const [selectedMilestone, setSelectedMilestone] = useState<Milestone | null>(null)
+  const [taskFilter, setTaskFilter] = useState<string>('all') // 'all' or specific cycle
   const [insightsLoading, setInsightsLoading] = useState(true)
+  const [milestonesLoading, setMilestonesLoading] = useState(true)
   const [currentDate] = useState(new Date().toLocaleDateString('en-US', { 
     weekday: 'long', 
     year: 'numeric', 
@@ -100,6 +130,120 @@ export function MorningReview() {
           }
         } catch (error) {
           console.log('Flashcards fetch error:', error)
+        }
+
+        // Fetch milestones (mock data for now - we'll create API later)
+        try {
+          // For now, using mock data until we create the API
+          const mockMilestones: Milestone[] = [
+            {
+              id: '1',
+              title: 'Launch MVP',
+              description: 'Complete and launch the minimum viable product',
+              due_date: '2025-07-01',
+              status: 'in_progress',
+              priority: 'high',
+              cycle: 'Q2 2025',
+              progress_percentage: 75,
+              created_at: '2025-05-01',
+              tasks: [
+                {
+                  id: '1',
+                  milestone_id: '1',
+                  title: 'Complete user authentication',
+                  status: 'completed',
+                  priority: 'high',
+                  cycle: 'Q2 2025',
+                  created_at: '2025-05-01'
+                },
+                {
+                  id: '2',
+                  milestone_id: '1',
+                  title: 'Implement core features',
+                  status: 'in_progress',
+                  priority: 'high',
+                  cycle: 'Q2 2025',
+                  created_at: '2025-05-01'
+                },
+                {
+                  id: '3',
+                  milestone_id: '1',
+                  title: 'Set up deployment pipeline',
+                  status: 'todo',
+                  priority: 'medium',
+                  cycle: 'Q2 2025',
+                  created_at: '2025-05-01'
+                }
+              ]
+            },
+            {
+              id: '2',
+              title: 'First Customer Interview',
+              description: 'Conduct initial customer discovery interviews',
+              due_date: '2025-06-15',
+              status: 'not_started',
+              priority: 'medium',
+              cycle: 'Q2 2025',
+              progress_percentage: 0,
+              created_at: '2025-05-01',
+              tasks: [
+                {
+                  id: '4',
+                  milestone_id: '2',
+                  title: 'Create interview script',
+                  status: 'todo',
+                  priority: 'high',
+                  cycle: 'Q2 2025',
+                  created_at: '2025-05-01'
+                },
+                {
+                  id: '5',
+                  milestone_id: '2',
+                  title: 'Reach out to potential customers',
+                  status: 'todo',
+                  priority: 'medium',
+                  cycle: 'Q2 2025',
+                  created_at: '2025-05-01'
+                }
+              ]
+            },
+            {
+              id: '3',
+              title: 'Secure Seed Funding',
+              description: 'Raise initial seed round',
+              due_date: '2025-08-01',
+              status: 'not_started',
+              priority: 'high',
+              cycle: 'Q3 2025',
+              progress_percentage: 10,
+              created_at: '2025-05-01',
+              tasks: [
+                {
+                  id: '6',
+                  milestone_id: '3',
+                  title: 'Create pitch deck',
+                  status: 'in_progress',
+                  priority: 'high',
+                  cycle: 'Q3 2025',
+                  created_at: '2025-05-01'
+                },
+                {
+                  id: '7',
+                  milestone_id: '3',
+                  title: 'Research potential investors',
+                  status: 'todo',
+                  priority: 'medium',
+                  cycle: 'Q3 2025',
+                  created_at: '2025-05-01'
+                }
+              ]
+            }
+          ]
+          setMilestones(mockMilestones)
+        } catch (error) {
+          console.log('Milestones fetch error:', error)
+        } finally {
+          setMilestonesLoading(false)
         }
 
         // Fetch recent meetings (gracefully handle auth errors)
@@ -167,6 +311,63 @@ export function MorningReview() {
     }
   }
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed': return 'bg-green-100 text-green-800 border-green-200'
+      case 'in_progress': return 'bg-blue-100 text-blue-800 border-blue-200'
+      case 'not_started': case 'todo': return 'bg-gray-100 text-gray-600 border-gray-200'
+      default: return 'bg-gray-100 text-gray-600 border-gray-200'
+    }
+  }
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'completed': return '✅'
+      case 'in_progress': return '🔄'
+      case 'not_started': case 'todo': return '⏳'
+      default: return '⏳'
+    }
+  }
+
+  const getDaysUntilDue = (dueDate: string) => {
+    const today = new Date()
+    const due = new Date(dueDate)
+    const diffTime = due.getTime() - today.getTime()
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    return diffDays
+  }
+
+  const formatDueDate = (dueDate: string) => {
+    const daysUntil = getDaysUntilDue(dueDate)
+    const date = new Date(dueDate)
+    
+    if (daysUntil < 0) {
+      return `Overdue by ${Math.abs(daysUntil)} days`
+    } else if (daysUntil === 0) {
+      return 'Due today'
+    } else if (daysUntil <= 7) {
+      return `${daysUntil} days left`
+    } else {
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    }
+  }
+
+  const getUniqueCycles = () => {
+    const cycles = new Set(['all'])
+    milestones.forEach(milestone => {
+      if (milestone.cycle) cycles.add(milestone.cycle)
+      milestone.tasks.forEach(task => {
+        if (task.cycle) cycles.add(task.cycle)
+      })
+    })
+    return Array.from(cycles)
+  }
+
+  const getFilteredTasks = (milestone: Milestone) => {
+    if (taskFilter === 'all') return milestone.tasks
+    return milestone.tasks.filter(task => task.cycle === taskFilter)
+  }
+
   return (
     <div className="theme-light min-h-screen p-4">
       <div className="max-w-2xl mx-auto space-y-ritual">
@@ -177,6 +378,199 @@ export function MorningReview() {
           </h1>
           <p className="subtext">{currentDate}</p>
         </div>
+
+        {/* Milestones */}
+        <div className="card-container animate-fade-in-up">
+          <h2 className="section-title mb-4">
+            🎯 Milestones
+          </h2>
+          
+          {milestonesLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="skeleton h-20 rounded-xl"></div>
+              ))}
+            </div>
+          ) : milestones.length > 0 ? (
+            <div className="space-y-3">
+              {milestones.map((milestone) => {
+                const daysUntil = getDaysUntilDue(milestone.due_date)
+                const isOverdue = daysUntil < 0
+                
+                return (
+                  <div 
+                    key={milestone.id} 
+                    className={`bg-white border rounded-2xl p-4 cursor-pointer transition-all hover:shadow-md ${
+                      isOverdue ? 'border-red-200 bg-red-50' : 'border-neutral-200'
+                    }`}
+                    onClick={() => setSelectedMilestone(milestone)}
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-medium text-neutral-900">{milestone.title}</span>
+                          <span className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(milestone.status)}`}>
+                            {getStatusIcon(milestone.status)} {milestone.status.replace('_', ' ')}
+                          </span>
+                        </div>
+                        <p className="text-sm text-neutral-600 line-clamp-1">{milestone.description}</p>
+                      </div>
+                      <div className="text-right ml-4">
+                        <div className={`text-xs font-medium ${isOverdue ? 'text-red-600' : 'text-neutral-500'}`}>
+                          {formatDueDate(milestone.due_date)}
+                        </div>
+                        <div className="text-xs text-neutral-400 mt-1">
+                          {milestone.tasks.length} tasks
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Progress bar */}
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 bg-neutral-200 rounded-full h-2">
+                        <div 
+                          className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${milestone.progress_percentage}%` }}
+                        ></div>
+                      </div>
+                      <span className="text-xs text-neutral-500 min-w-[3rem]">
+                        {milestone.progress_percentage}%
+                      </span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <div className="text-4xl mb-2">🎯</div>
+              <p className="subtext">No milestones yet. Set your first goal!</p>
+              <button className="btn-secondary mt-4">
+                Add Milestone
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Milestone Detail Modal */}
+        {selectedMilestone && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+              <div className="p-6 border-b border-neutral-200">
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <h3 className="text-xl font-semibold text-neutral-900 mb-1">
+                      {selectedMilestone.title}
+                    </h3>
+                    <p className="text-neutral-600">{selectedMilestone.description}</p>
+                  </div>
+                  <button 
+                    onClick={() => setSelectedMilestone(null)}
+                    className="text-neutral-400 hover:text-neutral-600 text-2xl leading-none"
+                  >
+                    ×
+                  </button>
+                </div>
+                
+                <div className="flex items-center gap-4 text-sm">
+                  <span className={`px-2 py-1 rounded-full border ${getStatusColor(selectedMilestone.status)}`}>
+                    {getStatusIcon(selectedMilestone.status)} {selectedMilestone.status.replace('_', ' ')}
+                  </span>
+                  <span className="text-neutral-500">
+                    Due: {new Date(selectedMilestone.due_date).toLocaleDateString()}
+                  </span>
+                  <span className={`font-medium ${getPriorityColor(selectedMilestone.priority)}`}>
+                    {selectedMilestone.priority.toUpperCase()} PRIORITY
+                  </span>
+                </div>
+                
+                {/* Progress */}
+                <div className="mt-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-neutral-700">Progress</span>
+                    <span className="text-sm text-neutral-500">{selectedMilestone.progress_percentage}%</span>
+                  </div>
+                  <div className="bg-neutral-200 rounded-full h-3">
+                    <div 
+                      className="bg-blue-500 h-3 rounded-full transition-all duration-300"
+                      style={{ width: `${selectedMilestone.progress_percentage}%` }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="font-semibold text-neutral-900">
+                    Tasks ({getFilteredTasks(selectedMilestone).length})
+                  </h4>
+                  
+                  {/* Cycle Filter */}
+                  <div className="flex gap-1">
+                    {getUniqueCycles().map(cycle => (
+                      <button
+                        key={cycle}
+                        onClick={() => setTaskFilter(cycle)}
+                        className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+                          taskFilter === cycle 
+                            ? 'bg-blue-100 text-blue-800 border-blue-200' 
+                            : 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200'
+                        }`}
+                      >
+                        {cycle === 'all' ? 'All' : cycle}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                
+                <div className="space-y-3">
+                  {getFilteredTasks(selectedMilestone).map(task => (
+                    <div key={task.id} className="border border-neutral-200 rounded-xl p-4">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-medium text-neutral-900">{task.title}</span>
+                            <span className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(task.status)}`}>
+                              {getStatusIcon(task.status)} {task.status.replace('_', ' ')}
+                            </span>
+                          </div>
+                          {task.description && (
+                            <p className="text-sm text-neutral-600">{task.description}</p>
+                          )}
+                        </div>
+                        <div className="ml-4 text-right">
+                          <div className={`text-xs font-medium ${getPriorityColor(task.priority)}`}>
+                            {task.priority.toUpperCase()}
+                          </div>
+                          {task.cycle && (
+                            <div className="text-xs text-neutral-400 mt-1">
+                              {task.cycle}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {task.due_date && (
+                        <div className="text-xs text-neutral-500">
+                          Due: {new Date(task.due_date).toLocaleDateString()}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  
+                  {getFilteredTasks(selectedMilestone).length === 0 && (
+                    <div className="text-center py-8">
+                      <div className="text-2xl mb-2">📝</div>
+                      <p className="text-neutral-500">
+                        {taskFilter === 'all' ? 'No tasks yet' : `No tasks for ${taskFilter}`}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Flashcards Due */}
         <div className="card-container animate-fade-in-up">
