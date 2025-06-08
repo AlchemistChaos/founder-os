@@ -81,51 +81,40 @@ export function FlashcardReview({ theme = 'auto' }: FlashcardReviewProps) {
     }
   }
 
-  const fetchFlashcards = async (resetToday = false) => {
+  const fetchFlashcards = async (resetToday: boolean = false) => {
+    setLoading(true)
+    setError(null)
+    
     try {
-      console.log('fetchFlashcards called with resetToday:', resetToday)
-      setLoading(true)
-      setError(null)
+      const url = resetToday ? '/api/flashcards?todayReset=true' : '/api/flashcards'
       
-      const headers = await getAuthHeaders()
-      if (!headers) {
-        console.log('No auth headers found')
-        return
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${supabase.auth.session()?.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch flashcards: ${response.status}`)
       }
 
-      const url = resetToday ? '/api/flashcards?today=true' : '/api/flashcards'
-      console.log('Making request to:', url)
-      const response = await fetch(url, { headers })
-      
-      if (!response.ok) {
-        console.log('Response not ok:', response.status, response.statusText)
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      
       const data = await response.json()
-      console.log('API response:', data)
       
-      if (data.success) {
-        console.log('Setting flashcards:', data.flashcards)
-        setFlashcards(data.flashcards)
-        setShowingTodayCards(resetToday)
-        setCurrentIndex(0)
-        setShowAnswer(false)
-        setReviewedCount(0)
-      } else {
-        console.log('API returned error:', data.error)
-        setError(data.error || 'Failed to fetch flashcards')
+      if (data.error) {
+        throw new Error(data.error)
       }
+
+      setFlashcards(data.flashcards || [])
+      setCurrentIndex(0)
     } catch (error) {
-      console.error('Error fetching flashcards:', error)
-      setError(error instanceof Error ? error.message : 'Failed to fetch flashcards')
+      setError(error instanceof Error ? error.message : 'Failed to load flashcards')
     } finally {
       setLoading(false)
     }
   }
 
-  const resetTodayCards = () => {
-    console.log('Reset Today button clicked!')
+  const handleResetToday = () => {
     fetchFlashcards(true)
   }
 
@@ -176,7 +165,6 @@ export function FlashcardReview({ theme = 'auto' }: FlashcardReviewProps) {
 
       if (response.ok) {
         const result = await response.json()
-        console.log(`Flashcard rated as ${rating}. Next due: ${result.nextDue}`)
         
         setReviewedCount(prev => prev + 1)
         
@@ -184,11 +172,9 @@ export function FlashcardReview({ theme = 'auto' }: FlashcardReviewProps) {
         setTimeout(() => {
           handleNext()
         }, 200)
-      } else {
-        console.error('Failed to save rating')
       }
     } catch (error) {
-      console.error('Error saving rating:', error)
+      // Handle error silently for now
     }
   }
 
@@ -264,7 +250,7 @@ export function FlashcardReview({ theme = 'auto' }: FlashcardReviewProps) {
               </span>
               {!showingTodayCards && (
                 <button
-                  onClick={resetTodayCards}
+                  onClick={handleResetToday}
                   className="btn-secondary text-sm px-4 py-2"
                   title="Reset and practice today's cards"
                 >
@@ -327,7 +313,7 @@ export function FlashcardReview({ theme = 'auto' }: FlashcardReviewProps) {
             </span>
             {!showingTodayCards && (
               <button
-                onClick={resetTodayCards}
+                onClick={handleResetToday}
                 className="btn-secondary text-sm px-4 py-2"
                 title="Reset and practice today's cards"
               >
@@ -492,7 +478,7 @@ export function FlashcardReview({ theme = 'auto' }: FlashcardReviewProps) {
                 </button>
               </Link>
               <button
-                onClick={resetTodayCards}
+                onClick={handleResetToday}
                 className="btn-secondary w-full touch-target"
               >
                 🔄 Practice Today's Cards Again

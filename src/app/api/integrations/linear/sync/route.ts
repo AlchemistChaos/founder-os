@@ -30,7 +30,6 @@ export async function POST(request: NextRequest) {
     const linear = createLinearAPI(apiKey)
     
     // Get recent issues (simplified approach)
-    console.log(`Fetching latest Linear issues...`)
     const issues = await linear.getIssues(undefined, 50)
     
     if (issues.length === 0) {
@@ -50,7 +49,6 @@ export async function POST(request: NextRequest) {
       user_id
     }))
 
-    console.log(`Processing ${entriesWithUser.length} Linear issues...`)
 
     // Insert entries into database
     // First, check for existing entries to avoid duplicates

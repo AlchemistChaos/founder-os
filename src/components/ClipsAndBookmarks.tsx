@@ -46,7 +46,6 @@ export function ClipsAndBookmarks() {
         const { data: { session } } = await supabase.auth.getSession()
         
         if (!session?.access_token) {
-          console.log('No authentication session found for clips')
           setClips([])
           return
         }
@@ -165,7 +164,6 @@ export function ClipsAndBookmarks() {
         const { data: { session } } = await supabase.auth.getSession()
         
         if (!session?.access_token) {
-          console.log('No authentication session found for insights')
           setLoadingInsights(false)
           return
         }

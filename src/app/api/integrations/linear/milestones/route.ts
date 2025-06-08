@@ -76,26 +76,6 @@ export async function GET(request: NextRequest) {
     // Get issues for the Summer Launch project to populate tasks
     const issues = await linearAPI.getIssues(undefined, 200) // Explicitly set limit to 200
     
-    // Debug: Check for MAR-583 before filtering
-    const mar583 = issues.find(issue => issue.identifier === 'MAR-583')
-    if (mar583) {
-      console.log(`🔍 FOUND MAR-583 BEFORE FILTERING:`)
-      console.log(`   identifier: ${mar583.identifier}`)
-      console.log(`   title: ${mar583.title}`)
-      console.log(`   due_date: ${mar583.dueDate}`)
-      console.log(`   team: ${mar583.team?.key} (${mar583.team?.name})`)
-      console.log(`   project: ${mar583.project?.name || 'NONE'}`)
-      console.log(`   Summer Launch Project ID: ${summerLaunchProject?.id}`)
-      console.log(`   Issue Project ID: ${mar583.project?.id}`)
-      console.log(`   Matches Summer Launch? ${mar583.project?.id === summerLaunchProject?.id}`)
-      console.log(`   Matches MAR team? ${mar583.team?.key === 'MAR'}`)
-    } else {
-      console.log(`❌ MAR-583 NOT FOUND in Linear API response at all!`)
-      console.log(`Total issues returned: ${issues.length}`)
-      console.log(`First 5 identifiers: ${issues.slice(0, 5).map(i => i.identifier).join(', ')}`)
-      console.log(`Last 5 identifiers: ${issues.slice(-5).map(i => i.identifier).join(', ')}`)
-    }
-    
     // Get both Summer Launch project issues AND all MAR team issues
     const summerLaunchIssues = issues.filter(issue => 
       issue.project?.id === summerLaunchProject?.id || 
@@ -120,15 +100,6 @@ export async function GET(request: NextRequest) {
         url: fallbackUrl
       }
       
-      // Enhanced debugging for specific tasks
-      if (issue.identifier === 'MAR-583' || issue.identifier === 'MAR-598' || issue.dueDate) {
-        console.log(`🔍 TASK DEBUG - ${issue.identifier}: "${issue.title}"`)
-        console.log(`   due_date: ${issue.dueDate}`)
-        console.log(`   milestone: ${issue.projectMilestone?.name || 'NONE'}`)
-        console.log(`   project: ${issue.project?.name || 'NONE'}`)
-        console.log(`   team: ${issue.team?.key}`)
-      }
-      
       if (issue.projectMilestone?.id) {
         // Assign to milestone
         if (!milestoneIssues.has(issue.projectMilestone.id)) {
@@ -139,20 +110,12 @@ export async function GET(request: NextRequest) {
         // Task without milestone - add to unassigned
         unassignedIssues.push(taskData)
       }
-      // console.log('Issue URL:', issue.title, '→', issue.url, 'fallback:', fallbackUrl)
     })
 
     // Add tasks to milestones
     formattedMilestones.forEach(milestone => {
       milestone.tasks = milestoneIssues.get(milestone.id) || []
     })
-
-    // console.log('Returning milestones with tasks:', formattedMilestones.map(m => ({
-    //   id: m.id,
-    //   title: m.title,
-    //   taskCount: m.tasks.length,
-    //   tasks: m.tasks.map(t => ({ title: t.title, url: t.url }))
-    // })))
 
     // Create a virtual milestone for unassigned tasks with due dates
     if (unassignedIssues.length > 0) {

@@ -36,122 +36,54 @@ export function FlashcardInfoModal({ isOpen, onClose, flashcardId, meetingId, me
 
   const fetchRelatedInsights = useCallback(async () => {
     if (!flashcardId && !meetingId) {
-      console.log('No flashcardId or meetingId provided to modal')
       return
     }
 
     try {
       setLoading(true)
-      setError(null)
-
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session?.access_token) {
-        setError('Authentication required')
-        return
-      }
-
-      const headers = {
-        'Authorization': `Bearer ${session.access_token}`,
-        'Content-Type': 'application/json'
-      }
-
-      if (flashcardId) {
-        console.log('Fetching specific insight for flashcard ID:', flashcardId)
-        
-        // Fetch the specific AI insight that created this flashcard
-        const response = await fetch(`/api/ai-insights?flashcard_id=${flashcardId}`, { headers })
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
-        }
-        
-        const data = await response.json()
-        console.log('Specific flashcard insight response:', data)
-        
-        if (data.success && data.insights?.length > 0) {
-          console.log('Found specific insight for flashcard')
-          setInsights(data.insights)
-          return
-        } else {
-          console.log('No specific insight found for flashcard, falling back to meeting insights')
-        }
-      }
-
-      if (meetingId) {
-        console.log('Fetching insights for meeting ID:', meetingId)
-        console.log('Meeting title:', meetingTitle)
-        
-        // Try AI insights for the meeting
-        const response = await fetch(`/api/ai-insights?meeting_id=${meetingId}&limit=50`, { headers })
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
-        }
       
-        const data = await response.json()
-        console.log('AI insights response:', data)
-        console.log('Total insights returned:', data.meta?.total || 0)
-        console.log('Insights array length:', data.insights?.length || 0)
+      // First try to get specific insight for flashcard
+      if (flashcardId) {
+        const response = await fetch(`/api/ai-insights?flashcard_id=${flashcardId}`, {
+          headers: await getAuthHeaders()
+        })
         
-        if (data.success && data.insights?.length > 0) {
-          console.log('Found', data.insights.length, 'AI insights')
-          setInsights(data.insights)
-        } else {
-          console.log('No AI insights found for specific meeting, trying to fetch ALL insights as test...')
+        if (response.ok) {
+          const data = await response.json()
           
-          // Try to fetch ALL insights to see if we have any data at all
-          const allInsightsResponse = await fetch(`/api/ai-insights?limit=5`, { headers })
-          if (allInsightsResponse.ok) {
-            const allInsightsData = await allInsightsResponse.json()
-            console.log('All insights test:', allInsightsData)
-            console.log('Total insights in system:', allInsightsData.meta?.total || 0)
+          if (data.insights && data.insights.length > 0) {
+            setInsights(data.insights)
+            return
           }
+        }
+      }
+      
+      // Fallback to meeting insights
+      if (meetingId) {
+        const response = await fetch(`/api/ai-insights?meeting_id=${meetingId}`, {
+          headers: await getAuthHeaders()
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
           
-          // Test specifically for Ali meeting insights
-          const aliInsightsResponse = await fetch(`/api/ai-insights?meeting_id=cf2f64db-4648-43ee-afb2-5acf32767888&limit=10`, { headers })
-          if (aliInsightsResponse.ok) {
-            const aliInsightsData = await aliInsightsResponse.json()
-            console.log('Ali meeting insights test:', aliInsightsData)
-            console.log('Ali insights found:', aliInsightsData.insights?.length || 0)
-          }
-          
-          console.log('Trying meeting insights fallback...')
-          // If no AI insights, try to fetch meeting insights as fallback
-          const meetingResponse = await fetch(`/api/meetings/${meetingId}/insights`, { headers })
-          
-          if (meetingResponse.ok) {
-            const meetingData = await meetingResponse.json()
-            
-            if (meetingData.success && meetingData.insights?.length > 0) {
-              // Convert meeting insights to AI insights format
-              const convertedInsights = meetingData.insights.map((insight: any) => ({
-                id: insight.id,
-                insight_text: insight.description || insight.title,
-                context: `Type: ${insight.insight_type}${insight.mentioned_participants?.length > 0 ? `, Mentioned: ${insight.mentioned_participants.join(', ')}` : ''}`,
-                how_to_implement: insight.due_date ? `Due: ${insight.due_date}` : 'Implementation guidance not available',
-                category: insight.insight_type,
-                priority: insight.priority || 'medium',
-                priority_reason: insight.confidence_score ? `Confidence: ${(insight.confidence_score * 100).toFixed(0)}%` : '',
-                goal_scores: {
-                  creator_brand: 0,
-                  pulse_startup: 0,
-                  data_driven: 0,
-                  learning_secrets: 0,
-                  overall: insight.confidence_score ? Math.round(insight.confidence_score * 10) : 5
-                }
-              }))
-              setInsights(convertedInsights)
-            } else {
-              setInsights([])
-            }
+          if (data.insights && data.insights.length > 0) {
+            setInsights(data.insights)
           } else {
-            setInsights([])
+            // Final fallback - try getting all insights as a test
+            const allResponse = await fetch('/api/ai-insights', {
+              headers: await getAuthHeaders()
+            })
+            
+            if (allResponse.ok) {
+              const allData = await allResponse.json()
+              setInsights(allData.insights || [])
+            }
           }
         }
       }
     } catch (error) {
-      console.error('Error fetching insights:', error)
-      setError(error instanceof Error ? error.message : 'Failed to fetch insights')
+      setError(error instanceof Error ? error.message : 'Failed to load insights')
     } finally {
       setLoading(false)
     }

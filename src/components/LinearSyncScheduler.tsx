@@ -40,13 +40,10 @@ export default function LinearSyncScheduler({ userId }: { userId: string }) {
           nextSync: data.next_sync
         }))
 
-        console.log(`Next Linear sync scheduled for: ${nextSync.toLocaleString()}`)
-        console.log(`Time until sync: ${Math.round(timeUntilSync / 1000 / 60)} minutes`)
 
         // Schedule the sync
         if (timeUntilSync > 0) {
           timeoutId = setTimeout(async () => {
-            console.log('Running scheduled Linear sync...')
             await runScheduledSync()
             // After sync, schedule the next one
             checkAndScheduleSync()

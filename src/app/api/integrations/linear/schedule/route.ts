@@ -38,7 +38,6 @@ export async function POST(request: NextRequest) {
 
     for (const integration of integrations) {
       try {
-        console.log(`Syncing Linear data for user: ${integration.user_id}`)
         
         // Get latest issues
         const issues = await linear.getIssues(undefined, 50)

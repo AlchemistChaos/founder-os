@@ -14,11 +14,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log('Starting integration job processing...')
     
     await processJobs()
     
-    console.log('Integration job processing completed')
 
     return NextResponse.json({ 
       success: true,
@@ -48,11 +46,9 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    console.log('Starting integration job processing via GET...')
     
     await processJobs()
     
-    console.log('Integration job processing completed')
 
     return NextResponse.json({ 
       success: true,

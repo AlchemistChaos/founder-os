@@ -59,7 +59,6 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const todayReset = searchParams.get('today') === 'true'
-    console.log('API called with todayReset:', todayReset)
 
     // Get flashcards that are due for review (or all today's flashcards in reset mode)
     let query = supabase
@@ -82,21 +81,17 @@ export async function GET(request: NextRequest) {
     if (todayReset) {
       // Get all flashcards created today
       const today = new Date().toISOString().split('T')[0] // Get YYYY-MM-DD format
-      console.log('Looking for flashcards created today:', `${today}T00:00:00.000Z`)
       query = query.gte('created_at', `${today}T00:00:00.000Z`)
     } else {
       // Normal mode: only due cards
       const now = new Date().toISOString()
-      console.log('Looking for flashcards due before:', now)
       query = query.or(`due_at.lte.${now},due_at.is.null`)
     }
 
     const { data: flashcards, error: flashcardsError } = await query
       .order('created_at', { ascending: false })
 
-    console.log('Found flashcards:', flashcards?.length || 0)
     if (flashcardsError) {
-      console.error('Error fetching flashcards:', flashcardsError)
       return NextResponse.json({ error: 'Database error' }, { status: 500 })
     }
 
@@ -119,7 +114,6 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('API Error:', error)
     return NextResponse.json({ 
       error: 'Internal server error',
       message: error instanceof Error ? error.message : 'Unknown error'

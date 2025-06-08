@@ -147,7 +147,6 @@ export function MorningReview() {
       'Blocked': 'blocked',
       'Cancelled': 'cancelled'
     }
-    console.log(`Mapping Linear status "${linearStatus}" to "${statusMap[linearStatus] || 'todo'}"`)
     return statusMap[linearStatus] || 'todo'
   }
 
@@ -184,13 +183,11 @@ export function MorningReview() {
       friday: []
     }
     
-    console.log('Processing weekly tasks for week starting:', startOfBusinessWeek.toDateString())
     
     milestones.forEach(milestone => {
       milestone.tasks.forEach(task => {
         if (task.due_date) {
           const taskDate = new Date(task.due_date)
-          console.log(`Task "${task.title}" due on:`, taskDate.toDateString())
           
           // Check if task is due Monday-Friday of the target week
           for (let i = 0; i < 5; i++) {
@@ -200,7 +197,6 @@ export function MorningReview() {
             // Check if task is due on this specific day
             if (taskDate.toDateString() === dayDate.toDateString()) {
               const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
-              console.log(`Adding task "${task.title}" to ${dayNames[i]}`)
               weeklyTasksMap[dayNames[i]].push({
                 ...task,
                 milestone_title: milestone.title,
@@ -261,14 +257,11 @@ export function MorningReview() {
     // Include more Linear statuses to catch all active tasks
     const activeStatuses = ['backlog', 'todo', 'in_progress', 'review', 'in review', 'started', 'doing', 'blocked', 'triage']
     
-    console.log('Filtering active tasks from milestones:', milestones.length)
     
     milestones.forEach(milestone => {
       milestone.tasks.forEach(task => {
-        console.log(`Task "${task.title}" - due_date: ${task.due_date}, status: "${task.status}"`)
         // Only include tasks without due dates that are in active statuses
         if (!task.due_date && activeStatuses.includes(task.status.toLowerCase())) {
-          console.log(`Adding active task: "${task.title}" (${task.status})`)
           activeTasks.push({
             ...task,
             milestone_title: milestone.title,
@@ -278,7 +271,6 @@ export function MorningReview() {
       })
     })
     
-    console.log('Total active tasks found:', activeTasks.length)
     return activeTasks
   }
 
@@ -341,7 +333,6 @@ export function MorningReview() {
         }
 
         if (!session?.access_token) {
-          console.log('No authentication session found for morning review, trying without auth...')
         }
 
         // Fetch flashcards due today (gracefully handle auth errors)
@@ -359,10 +350,8 @@ export function MorningReview() {
             })) || []
             setFlashcardsDue(dueFlashcards)
           } else {
-            console.log('Flashcards fetch failed:', flashcardsResponse.status)
           }
         } catch (error) {
-          console.log('Flashcards fetch error:', error)
         }
 
         // Define available teams (matching Linear teams)
@@ -428,11 +417,8 @@ export function MorningReview() {
               }))
               setMilestones(linearMilestones)
               // Debug: Log all tasks and their due dates
-              console.log('=== DEBUG: All Linear Milestones and Tasks ===')
               linearMilestones.forEach(milestone => {
-                console.log(`Milestone: "${milestone.title}" (${milestone.tasks.length} tasks)`)
                 milestone.tasks.forEach(task => {
-                  console.log(`  - Task: "${task.title}" | due_date: ${task.due_date} | status: ${task.status}`)
                 })
               })
               
@@ -440,25 +426,20 @@ export function MorningReview() {
               const weeklyTasksResult = getWeeklyTasks(linearMilestones)
               const activeTasksResult = getActiveTasksWithoutDueDates(linearMilestones)
               
-              console.log('=== Weekly Tasks Result ===', weeklyTasksResult)
-              console.log('=== Active Tasks Result ===', activeTasksResult.length, 'tasks')
               
               setWeeklyTasks(weeklyTasksResult)
               setActiveTasks(activeTasksResult)
             } else {
-              console.log('Failed to fetch milestones from Linear:', milestonesData.error)
               // Fallback to empty milestones
               setMilestones([])
               setWeeklyTasks({})
               setActiveTasks([])
             }
           } else {
-            console.log('Milestones API failed:', milestonesResponse.status)
             // Fallback to empty milestones  
             setMilestones([])
           }
         } catch (error) {
-          console.log('Milestones fetch error:', error)
           // Fallback to empty milestones
           setMilestones([])
         } finally {
@@ -479,10 +460,8 @@ export function MorningReview() {
             })) || []
             setMeetings(recentMeetings)
           } else {
-            console.log('Meetings fetch failed:', meetingsResponse.status)
           }
         } catch (error) {
-          console.log('Meetings fetch error:', error)
         }
 
         // Fetch AI insights from our 3-agent pipeline
@@ -490,7 +469,6 @@ export function MorningReview() {
           let insightsResponse = await fetch('/api/ai-insights?limit=5', { headers })
           
           if (!insightsResponse.ok && insightsResponse.status === 401) {
-            console.log('Auth failed for insights, trying test mode...')
             insightsResponse = await fetch('/api/ai-insights?test=true&limit=5')
           }
           
@@ -498,10 +476,8 @@ export function MorningReview() {
             const insightsData = await insightsResponse.json()
             setAiInsights(insightsData.insights || [])
           } else {
-            console.log('AI insights fetch failed:', insightsResponse.status)
           }
         } catch (error) {
-          console.log('AI insights fetch error:', error)
         }
 
         setBusinessUpdates([])
@@ -517,7 +493,6 @@ export function MorningReview() {
   }, [])
 
   const handleInsightAction = (insightId: string, action: 'star' | 'flashcard' | 'view') => {
-    console.log(`${action} action on insight ${insightId}`)
     // TODO: Implement insight actions
   }
 

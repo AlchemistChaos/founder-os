@@ -102,7 +102,6 @@ TASKS: ${meeting.tasks?.join('\n') || 'None'}
       score: (hasTranscriptContent ? 3 : 0) + (hasMetadata ? 1 : 0) + (hasActionItems ? 1 : 0) + (hasKeywords ? 1 : 0)
     }
     
-    console.log(`🔍 Content validation: Score ${contentSufficiency.score}/6`, contentSufficiency)
     
     // Require minimum content to prevent hallucination
     if (contentSufficiency.score < 2 || (!hasTranscriptContent && !hasMetadata)) {
@@ -157,7 +156,6 @@ TASKS: ${meeting.tasks?.join('\n') || 'None'}
       const filteredCount = (aiInsights.refinedInsights?.length || 0) - validatedInsights.length
       
       if (filteredCount > 0) {
-        console.log(`🔍 Filtered ${filteredCount} low-confidence insights due to potential hallucination`)
       }
       
       console.log('✅ Extracted insights with goal alignment:', validatedInsights.length, 'high-priority')
