@@ -103,11 +103,11 @@ export function MorningReview() {
   const [aiInsights, setAiInsights] = useState<AIInsight[]>([])
   const [milestones, setMilestones] = useState<Milestone[]>([])
   const [availableTeams, setAvailableTeams] = useState<Team[]>([])
-  const [selectedTeams, setSelectedTeams] = useState<string[]>([])
+  const [selectedTeams, setSelectedTeams] = useState<string[]>(['all'])
   const [activeTab, setActiveTab] = useState<string>('all')
   const [showTeamSettings, setShowTeamSettings] = useState(false)
   const [selectedMilestone, setSelectedMilestone] = useState<Milestone | null>(null)
-  const [taskFilter, setTaskFilter] = useState<string>('all') // 'all' or specific cycle
+  const [taskFilter, setTaskFilter] = useState('all')
   const [insightsLoading, setInsightsLoading] = useState(true)
   const [milestonesLoading, setMilestonesLoading] = useState(true)
   const [currentDate] = useState(new Date().toLocaleDateString('en-US', { 
@@ -116,6 +116,8 @@ export function MorningReview() {
     month: 'long', 
     day: 'numeric' 
   }))
+  const [taskStatusFilter, setTaskStatusFilter] = useState('all')
+  const [weeklyTasks, setWeeklyTasks] = useState<{[key: string]: Task[]}>({})
 
   // Helper functions for Linear data transformation
   const getTeamColor = (teamKey: string) => {
@@ -146,6 +148,74 @@ export function MorningReview() {
     if (linearPriority >= 2) return 'high'
     if (linearPriority >= 1) return 'medium'
     return 'low'
+  }
+
+  // Weekly task helpers
+  const getWeeklyTasks = (milestones: Milestone[]) => {
+    const today = new Date()
+    const startOfWeek = new Date(today)
+    startOfWeek.setDate(today.getDate() - today.getDay()) // Start from Sunday
+    
+    const weekDays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+    const weeklyTasksMap: {[key: string]: Task[]} = {}
+    
+    weekDays.forEach(day => weeklyTasksMap[day] = [])
+    
+    milestones.forEach(milestone => {
+      milestone.tasks.forEach(task => {
+        if (task.due_date) {
+          const taskDate = new Date(task.due_date)
+          const dayOfWeek = taskDate.getDay()
+          const dayName = weekDays[dayOfWeek]
+          
+          // Only include tasks due this week
+          const endOfWeek = new Date(startOfWeek)
+          endOfWeek.setDate(startOfWeek.getDate() + 6)
+          
+          if (taskDate >= startOfWeek && taskDate <= endOfWeek) {
+            weeklyTasksMap[dayName].push({
+              ...task,
+              milestone_title: milestone.title,
+              milestone_id: milestone.id
+            })
+          }
+        }
+      })
+    })
+    
+    return weeklyTasksMap
+  }
+
+  const getTaskStatusColor = (status: string) => {
+    const statusColors: { [key: string]: string } = {
+      'backlog': 'border-gray-200 bg-gray-50 text-gray-700',
+      'todo': 'border-blue-200 bg-blue-50 text-blue-700',
+      'in_progress': 'border-yellow-200 bg-yellow-50 text-yellow-700',
+      'in progress': 'border-yellow-200 bg-yellow-50 text-yellow-700',
+      'done': 'border-green-200 bg-green-50 text-green-700',
+      'completed': 'border-green-200 bg-green-50 text-green-700',
+      'review': 'border-purple-200 bg-purple-50 text-purple-700',
+      'blocked': 'border-red-200 bg-red-50 text-red-700',
+      'cancelled': 'border-gray-200 bg-gray-100 text-gray-600'
+    }
+    return statusColors[status.toLowerCase()] || statusColors['todo']
+  }
+
+  const getUniqueTaskStatuses = (milestone: Milestone) => {
+    const statuses = new Set(['all'])
+    milestone.tasks.forEach(task => {
+      statuses.add(task.status.toLowerCase())
+    })
+    return Array.from(statuses)
+  }
+
+  const getFilteredTasksByStatus = (milestone: Milestone) => {
+    if (taskStatusFilter === 'all') {
+      return milestone.tasks
+    }
+    return milestone.tasks.filter(task => 
+      task.status.toLowerCase() === taskStatusFilter.toLowerCase()
+    )
   }
 
   // Load team preferences from localStorage
@@ -258,10 +328,13 @@ export function MorningReview() {
                 project: milestone.project
               }))
               setMilestones(linearMilestones)
+              // Set weekly tasks
+              setWeeklyTasks(getWeeklyTasks(linearMilestones))
             } else {
               console.log('Failed to fetch milestones from Linear:', milestonesData.error)
               // Fallback to empty milestones
               setMilestones([])
+              setWeeklyTasks({})
             }
           } else {
             console.log('Milestones API failed:', milestonesResponse.status)
@@ -452,6 +525,59 @@ export function MorningReview() {
           <p className="subtext">{currentDate}</p>
         </div>
 
+        {/* Weekly Task Overview */}
+        <div className="card-container animate-fade-in-up mb-6">
+          <h2 className="section-title mb-4">
+            📅 This Week's Tasks
+          </h2>
+          
+          <div className="grid grid-cols-5 gap-3">
+            {['monday', 'tuesday', 'wednesday', 'thursday', 'friday'].map(day => {
+              const dayTasks = weeklyTasks[day] || []
+              const capitalizedDay = day.charAt(0).toUpperCase() + day.slice(1)
+              
+              return (
+                <div key={day} className="bg-white border border-neutral-200 rounded-xl p-3">
+                  <div className="text-sm font-medium text-neutral-700 mb-2 text-center">
+                    {capitalizedDay}
+                  </div>
+                  
+                  {dayTasks.length > 0 ? (
+                    <div className="space-y-2">
+                      {dayTasks.slice(0, 3).map(task => (
+                        <div key={task.id} className="bg-neutral-50 rounded-lg p-2">
+                          <div className="text-xs font-medium text-neutral-900 line-clamp-1 mb-1">
+                            {task.title}
+                          </div>
+                          <div className="flex items-center justify-between text-xs">
+                            <span className={`px-1 py-0.5 rounded border ${getTaskStatusColor(task.status)}`}>
+                              {task.status}
+                            </span>
+                            {task.assignee && (
+                              <span className="text-neutral-500 truncate ml-1">
+                                {task.assignee}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                      {dayTasks.length > 3 && (
+                        <div className="text-xs text-neutral-500 text-center">
+                          +{dayTasks.length - 3} more
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-xs text-neutral-400 text-center py-4">
+                      No tasks
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
         {/* Milestones */}
         <div className="card-container animate-fade-in-up">
           <div className="flex items-center justify-between mb-4">
@@ -559,7 +685,14 @@ export function MorningReview() {
 
         {/* Team Settings Modal */}
         {showTeamSettings && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setShowTeamSettings(false)
+              }
+            }}
+          >
             <div className="bg-white rounded-2xl max-w-md w-full">
               <div className="p-6 border-b border-neutral-200">
                 <div className="flex items-center justify-between">
@@ -624,7 +757,14 @@ export function MorningReview() {
 
         {/* Milestone Detail Modal */}
         {selectedMilestone && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setSelectedMilestone(null)
+              }
+            }}
+          >
             <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
               <div className="p-6 border-b border-neutral-200">
                 <div className="flex items-start justify-between mb-4">
@@ -675,67 +815,81 @@ export function MorningReview() {
               <div className="p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h4 className="font-semibold text-neutral-900">
-                    Tasks ({getFilteredTasks(selectedMilestone).length})
+                    Tasks ({getFilteredTasksByStatus(selectedMilestone).length})
                   </h4>
                   
-                  {/* Cycle Filter */}
-                  <div className="flex gap-1">
-                    {getUniqueCycles().map(cycle => (
+                  {/* Status Filter */}
+                  <div className="flex gap-1 flex-wrap">
+                    {getUniqueTaskStatuses(selectedMilestone).map(status => (
                       <button
-                        key={cycle}
-                        onClick={() => setTaskFilter(cycle)}
+                        key={status}
+                        onClick={() => setTaskStatusFilter(status)}
                         className={`px-3 py-1 text-xs rounded-full border transition-colors ${
-                          taskFilter === cycle 
+                          taskStatusFilter === status 
                             ? 'bg-blue-100 text-blue-800 border-blue-200' 
                             : 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200'
                         }`}
                       >
-                        {cycle === 'all' ? 'All' : cycle}
+                        {status === 'all' ? 'All' : status.charAt(0).toUpperCase() + status.slice(1)}
                       </button>
                     ))}
                   </div>
                 </div>
                 
                 <div className="space-y-3">
-                  {getFilteredTasks(selectedMilestone).map(task => (
-                    <div key={task.id} className="border border-neutral-200 rounded-xl p-4">
-                      <div className="flex items-start justify-between mb-2">
+                  {getFilteredTasksByStatus(selectedMilestone).map(task => (
+                    <div key={task.id} className="border border-neutral-200 rounded-xl p-4 hover:border-neutral-300 transition-colors">
+                      <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
+                          <div className="flex items-center gap-2 mb-2">
                             <span className="font-medium text-neutral-900">{task.title}</span>
-                            <span className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(task.status)}`}>
-                              {getStatusIcon(task.status)} {task.status.replace('_', ' ')}
+                            <span className={`text-xs px-2 py-1 rounded-full border ${getTaskStatusColor(task.status)}`}>
+                              {task.status.charAt(0).toUpperCase() + task.status.slice(1)}
                             </span>
                           </div>
                           {task.description && (
-                            <p className="text-sm text-neutral-600">{task.description}</p>
+                            <p className="text-sm text-neutral-600 mb-2">{task.description}</p>
                           )}
                         </div>
                         <div className="ml-4 text-right">
                           <div className={`text-xs font-medium ${getPriorityColor(task.priority)}`}>
-                            {task.priority.toUpperCase()}
+                            {typeof task.priority === 'string' ? task.priority.toUpperCase() : 'MEDIUM'}
                           </div>
-                          {task.cycle && (
-                            <div className="text-xs text-neutral-400 mt-1">
-                              {task.cycle}
-                            </div>
-                          )}
                         </div>
                       </div>
                       
-                      {task.due_date && (
-                        <div className="text-xs text-neutral-500">
-                          Due: {new Date(task.due_date).toLocaleDateString()}
+                      <div className="flex items-center justify-between text-xs text-neutral-500">
+                        <div className="flex items-center gap-4">
+                          {task.due_date && (
+                            <span>
+                              📅 Due: {new Date(task.due_date).toLocaleDateString()}
+                            </span>
+                          )}
+                          {task.assignee && (
+                            <span>
+                              👤 {task.assignee}
+                            </span>
+                          )}
                         </div>
-                      )}
+                        {task.url && (
+                          <a 
+                            href={task.url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800 underline"
+                          >
+                            View in Linear →
+                          </a>
+                        )}
+                      </div>
                     </div>
                   ))}
                   
-                  {getFilteredTasks(selectedMilestone).length === 0 && (
+                  {getFilteredTasksByStatus(selectedMilestone).length === 0 && (
                     <div className="text-center py-8">
                       <div className="text-2xl mb-2">📝</div>
                       <p className="text-neutral-500">
-                        {taskFilter === 'all' ? 'No tasks yet' : `No tasks for ${taskFilter}`}
+                        {taskStatusFilter === 'all' ? 'No tasks yet' : `No ${taskStatusFilter} tasks`}
                       </p>
                     </div>
                   )}
