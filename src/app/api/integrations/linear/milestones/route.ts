@@ -4,7 +4,7 @@ import { apiCache, CACHE_KEYS, CACHE_TTL } from '@/lib/cache'
 
 export async function GET(request: NextRequest) {
   try {
-    // Check cache first
+    // Check cache first with longer TTL for milestones (10 minutes)
     const cacheKey = CACHE_KEYS.LINEAR_MILESTONES
     const cachedData = apiCache.get(cacheKey)
     
@@ -161,8 +161,8 @@ export async function GET(request: NextRequest) {
       unassignedTasksCount: unassignedIssues.length
     }
 
-    // Cache the response
-    apiCache.set(cacheKey, responseData, CACHE_TTL.LINEAR_DATA)
+    // Cache for 10 minutes (600000ms) instead of default 5 minutes
+    apiCache.set(cacheKey, responseData, 600000)
 
     return NextResponse.json(responseData)
 
