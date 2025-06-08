@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '@/components/AuthProvider'
 import { supabase } from '@/lib/supabase'
-import { renderFormattedText } from '@/lib/utils'
+import { parseFormattedText } from '@/lib/utils'
 
 interface Flashcard {
   id: string
@@ -198,6 +198,29 @@ export function AllFlashcards() {
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalCards, setTotalCards] = useState(0)
+
+  // Helper function to render formatted text with bullet points
+  const renderFormattedText = (text: string) => {
+    const parsedContent = parseFormattedText(text)
+    
+    return parsedContent.map((item, index) => {
+      if (item.type === 'bullet') {
+        return (
+          <div key={index} className="flex items-start gap-2 mb-1">
+            <span className="text-current mt-0.5 flex-shrink-0">•</span>
+            <span className="flex-1">{item.content}</span>
+          </div>
+        )
+      }
+      
+      // Regular text line
+      return (
+        <div key={index} className={item.content ? "mb-1" : "mb-2"}>
+          {item.content || '\u00A0'}
+        </div>
+      )
+    })
+  }
   const [editingCard, setEditingCard] = useState<Flashcard | null>(null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
 

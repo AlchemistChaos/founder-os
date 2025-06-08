@@ -1,4 +1,3 @@
-import React from "react"
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 
@@ -47,31 +46,24 @@ export function formatTextWithBullets(text: string): string {
   return formattedLines.join('\n')
 }
 
-// Convert formatted text to JSX with proper bullet point styling
-export function renderFormattedText(text: string): React.ReactNode[] {
-  if (!text) return [text]
+// Convert formatted text to structured data for JSX rendering
+export function parseFormattedText(text: string): Array<{ type: 'bullet' | 'text', content: string }> {
+  if (!text) return [{ type: 'text', content: text }]
   
   const formattedText = formatTextWithBullets(text)
   const lines = formattedText.split('\n')
   
-  return lines.map((line, index) => {
+  return lines.map(line => {
     const trimmedLine = line.trim()
     
     // Check if this is a bullet point line
     if (trimmedLine.startsWith('• ')) {
-      return (
-        <div key={index} className="flex items-start gap-2 mb-1">
-          <span className="text-current mt-0.5 flex-shrink-0">•</span>
-          <span className="flex-1">{trimmedLine.slice(2)}</span>
-        </div>
-      )
+      return { type: 'bullet', content: trimmedLine.slice(2) }
     }
     
-    // Regular line (could be empty)
-    return (
-      <div key={index} className={trimmedLine ? "mb-1" : "mb-2"}>
-        {trimmedLine || '\u00A0'}
-      </div>
-    )
+    // Regular line
+    return { type: 'text', content: trimmedLine || '' }
   })
-} 
+}
+
+ 
