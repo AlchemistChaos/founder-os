@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '@/components/AuthProvider'
 import { supabase } from '@/lib/supabase'
+import { renderFormattedText } from '@/lib/utils'
 
 interface Flashcard {
   id: string
@@ -368,9 +369,9 @@ export function AllFlashcards() {
                     <h3 className="font-medium text-gray-900 dark:text-white mb-2 text-sm">
                       Question:
                     </h3>
-                    <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed line-clamp-3">
-                      {card.question}
-                    </p>
+                    <div className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed line-clamp-3">
+                      {renderFormattedText(card.question)}
+                    </div>
                   </div>
 
                   {/* Answer Preview */}
@@ -378,9 +379,9 @@ export function AllFlashcards() {
                     <h3 className="font-medium text-gray-900 dark:text-white mb-2 text-sm">
                       Answer:
                     </h3>
-                    <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed line-clamp-2">
-                      {card.answer}
-                    </p>
+                    <div className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed line-clamp-2">
+                      {renderFormattedText(card.answer)}
+                    </div>
                   </div>
 
                   {/* Stats */}

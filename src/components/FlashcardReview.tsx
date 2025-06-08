@@ -5,6 +5,7 @@ import { useAuth } from '@/components/AuthProvider'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import { FlashcardInfoModal } from './FlashcardInfoModal'
+import { renderFormattedText } from '@/lib/utils'
 
 interface Flashcard {
   id: string
@@ -348,7 +349,7 @@ export function FlashcardReview({ theme = 'auto' }: FlashcardReviewProps) {
                 {/* Question - Centered */}
                 <div className="flex-1 flex items-center justify-center">
                   <div className="flashcard-question">
-                    {currentCard.question}
+                    {renderFormattedText(currentCard.question)}
                   </div>
                 </div>
 
@@ -380,8 +381,8 @@ export function FlashcardReview({ theme = 'auto' }: FlashcardReviewProps) {
                 {/* Answer */}
                 <div className="flex-1 flex items-center justify-center mb-6">
                   <div className="text-center p-4 rounded-2xl border-2 border-dashed border-green-300 bg-green-50 dark:bg-green-500/10 dark:border-green-500/30">
-                    <div className="text-green-700 dark:text-green-300 font-medium text-sm leading-relaxed">
-                      {currentCard.answer}
+                    <div className="text-green-700 dark:text-green-300 font-medium text-sm leading-relaxed text-left">
+                      {renderFormattedText(currentCard.answer)}
                     </div>
                   </div>
                 </div>
