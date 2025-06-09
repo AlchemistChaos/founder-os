@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import React from 'react'
 
@@ -100,16 +100,14 @@ interface Task {
 
 export const MorningReview = React.memo(function MorningReview() {
   const [flashcardsDue, setFlashcardsDue] = useState<FlashcardDue[]>([])
-  const [businessUpdates, setBusinessUpdates] = useState<BusinessUpdate[]>([])
   const [meetings, setMeetings] = useState<Meeting[]>([])
   const [aiInsights, setAiInsights] = useState<AIInsight[]>([])
   const [milestones, setMilestones] = useState<Milestone[]>([])
   const [availableTeams, setAvailableTeams] = useState<Team[]>([])
-  const [selectedTeams, setSelectedTeams] = useState<string[]>(['all'])
-  const [activeTab, setActiveTab] = useState<string>('all')
+  const [selectedTeams, setSelectedTeams] = useState<string[]>(['mar'])
+  const [activeTab, setActiveTab] = useState<string>('mar')
   const [showTeamSettings, setShowTeamSettings] = useState(false)
   const [selectedMilestone, setSelectedMilestone] = useState<Milestone | null>(null)
-  const [taskFilter, setTaskFilter] = useState('all')
   const [insightsLoading, setInsightsLoading] = useState(true)
   const [milestonesLoading, setMilestonesLoading] = useState(true)
   const [currentDate] = useState(new Date().toLocaleDateString('en-US', { 
@@ -124,19 +122,11 @@ export const MorningReview = React.memo(function MorningReview() {
 
   // Helper functions moved to bottom of component to avoid duplication
 
-  // Note: Removed useMemo calls to fix initialization order issues
-  
-  // Define helper functions early to avoid initialization order issues
-  const getFilteredMilestones = () => {
-    if (activeTab === 'all') return milestones
-    return milestones.filter(milestone => milestone.team_id === activeTab)
-  }
-
   const fetchData = useCallback(async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession()
       
-      const headers = session?.access_token ? {
+      const headers: HeadersInit = session?.access_token ? {
         'Authorization': `Bearer ${session.access_token}`,
         'Content-Type': 'application/json'
       } : {
@@ -178,11 +168,11 @@ export const MorningReview = React.memo(function MorningReview() {
 
       // Set default selected teams if none are saved
       if (selectedTeams.length === 0) {
-        const defaultTeams = ['mar', 'eng', 'product']
+        const defaultTeams = ['mar']
         setSelectedTeams(defaultTeams)
         setActiveTab('mar')
       } else {
-        setActiveTab(selectedTeams[0] || 'all')
+        setActiveTab(selectedTeams[0] || 'mar')
       }
 
       // Fetch real milestones from Linear Summer Launch project
@@ -227,19 +217,12 @@ export const MorningReview = React.memo(function MorningReview() {
               project: milestone.project
             }))
             setMilestones(linearMilestones)
-            // Debug: Log all tasks and their due dates
-            linearMilestones.forEach(milestone => {
-              milestone.tasks.forEach(task => {
-              })
-            })
+            // Process weekly and active tasks
             
-            // Set weekly tasks and active tasks without due dates
-            const weeklyTasksResult = getWeeklyTasks(linearMilestones)
-            const activeTasksResult = getActiveTasksWithoutDueDates(linearMilestones)
-            
-            
-            setWeeklyTasks(weeklyTasksResult)
-            setActiveTasks(activeTasksResult)
+            // Weekly and active tasks will be calculated in a separate effect
+            // when activeTab changes
+            setWeeklyTasks({})
+            setActiveTasks([])
           } else {
             // Fallback to empty milestones
             setMilestones([])
@@ -291,7 +274,7 @@ export const MorningReview = React.memo(function MorningReview() {
       } catch (error) {
       }
 
-      setBusinessUpdates([])
+      // No business updates needed
       
     } catch (error) {
       console.error('Error fetching morning review data:', error)
@@ -303,6 +286,16 @@ export const MorningReview = React.memo(function MorningReview() {
   useEffect(() => {
     fetchData()
   }, [fetchData])
+
+  // Recalculate tasks when activeTab or milestones change
+  useEffect(() => {
+    if (milestones.length > 0) {
+      const weeklyTasksResult = getWeeklyTasks(milestones)
+      const activeTasksResult = getActiveTasksWithoutDueDates(milestones)
+      setWeeklyTasks(weeklyTasksResult)
+      setActiveTasks(activeTasksResult)
+    }
+  }, [activeTab, milestones])
 
   // Memoize event handlers
   const handleTeamToggle = useCallback((teamId: string) => {
@@ -320,7 +313,7 @@ export const MorningReview = React.memo(function MorningReview() {
     })
   }, [selectedTeams, activeTab])
 
-  const handleInsightAction = useCallback((insightId: string, action: 'star' | 'flashcard' | 'view') => {
+  const handleInsightAction = useCallback((_insightId: string, _action: 'star' | 'flashcard' | 'view') => {
     // TODO: Implement insight actions
   }, [])
 
@@ -386,8 +379,12 @@ export const MorningReview = React.memo(function MorningReview() {
       friday: []
     }
     
+    // Filter milestones by active tab
+    const filteredMilestones = activeTab === 'all' 
+      ? milestones 
+      : milestones.filter(milestone => milestone.team_id === activeTab)
     
-    milestones.forEach(milestone => {
+    filteredMilestones.forEach(milestone => {
       milestone.tasks.forEach(task => {
         if (task.due_date) {
           const taskDate = new Date(task.due_date)
@@ -460,8 +457,12 @@ export const MorningReview = React.memo(function MorningReview() {
     // Include more Linear statuses to catch all active tasks
     const activeStatuses = ['backlog', 'todo', 'in_progress', 'review', 'in review', 'started', 'doing', 'blocked', 'triage']
     
+    // Filter milestones by active tab
+    const filteredMilestones = activeTab === 'all' 
+      ? milestones 
+      : milestones.filter(milestone => milestone.team_id === activeTab)
     
-    milestones.forEach(milestone => {
+    filteredMilestones.forEach(milestone => {
       milestone.tasks.forEach(task => {
         // Only include tasks without due dates that are in active statuses
         if (!task.due_date && activeStatuses.includes(task.status.toLowerCase())) {
@@ -513,8 +514,16 @@ export const MorningReview = React.memo(function MorningReview() {
   // Load team preferences from localStorage
   useEffect(() => {
     const savedTeams = localStorage.getItem('selectedTeams')
+    const savedActiveTab = localStorage.getItem('activeTab')
+    
     if (savedTeams) {
-      setSelectedTeams(JSON.parse(savedTeams))
+      const teams = JSON.parse(savedTeams)
+      setSelectedTeams(teams)
+      if (savedActiveTab && teams.includes(savedActiveTab)) {
+        setActiveTab(savedActiveTab)
+      } else if (teams.length > 0) {
+        setActiveTab(teams[0])
+      }
     }
   }, [])
 
@@ -523,34 +532,14 @@ export const MorningReview = React.memo(function MorningReview() {
     localStorage.setItem('selectedTeams', JSON.stringify(selectedTeams))
   }, [selectedTeams])
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high': return 'text-red-600'
-      case 'medium': return 'text-yellow-600'
-      case 'low': return 'text-green-600'
-      default: return 'text-neutral-500'
-    }
-  }
+  // Save active tab to localStorage
+  useEffect(() => {
+    localStorage.setItem('activeTab', activeTab)
+  }, [activeTab])
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed': return 'bg-green-100 text-green-800 border-green-200'
-      case 'in_progress': return 'bg-blue-100 text-blue-800 border-blue-200'
-      case 'not_started': case 'todo': return 'bg-gray-100 text-gray-600 border-gray-200'
-      default: return 'bg-gray-100 text-gray-600 border-gray-200'
-    }
-  }
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'completed': return '✅'
-      case 'in_progress': return '🔄'
-      case 'not_started': case 'todo': return '⏳'
-      default: return '⏳'
-    }
-  }
-
-  const getDaysUntilDue = (dueDate: string) => {
+  const getDaysUntilDue = (dueDate: string | null) => {
+    if (!dueDate) return 0
     const today = new Date()
     const due = new Date(dueDate)
     const diffTime = due.getTime() - today.getTime()
@@ -558,7 +547,8 @@ export const MorningReview = React.memo(function MorningReview() {
     return diffDays
   }
 
-  const formatDueDate = (dueDate: string) => {
+  const formatDueDate = (dueDate: string | null) => {
+    if (!dueDate) return 'No due date'
     const daysUntil = getDaysUntilDue(dueDate)
     const date = new Date(dueDate)
     
@@ -573,17 +563,14 @@ export const MorningReview = React.memo(function MorningReview() {
     }
   }
 
-  const getFilteredTasks = (milestone: Milestone) => {
-    if (taskFilter === 'all') return milestone.tasks
-    return milestone.tasks.filter(task => task.cycle === taskFilter)
-  }
-
   const getMilestoneCountForTeam = (teamId: string) => {
     return milestones.filter(m => m.team_id === teamId).length
   }
 
   const getAvailableTabs = () => {
-    const tabs = [{ id: 'all', name: 'All Teams', count: milestones.length }]
+    const tabs: Array<{id: string, name: string, count: number, icon?: string, color?: string}> = [
+      { id: 'all', name: 'All Teams', count: milestones.length }
+    ]
     
     selectedTeams.forEach(teamId => {
       const team = availableTeams.find(t => t.id === teamId)
@@ -833,63 +820,31 @@ export const MorningReview = React.memo(function MorningReview() {
               }
             }}
           >
-            <div className="bg-white rounded-2xl max-w-md w-full">
-              <div className="p-6 border-b border-neutral-200">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xl font-semibold text-neutral-900">
-                    Team Settings
-                  </h3>
-                  <button 
-                    onClick={() => setShowTeamSettings(false)}
-                    className="text-neutral-400 hover:text-neutral-600 text-2xl leading-none"
-                  >
-                    ×
-                  </button>
-                </div>
-                <p className="text-neutral-600 text-sm mt-2">
-                  Select which teams to show as tabs in your milestones view
-                </p>
+            <div className="bg-white rounded-2xl p-6 max-w-md w-full">
+              <h3 className="text-lg font-semibold mb-4">Team Settings</h3>
+              
+              <div className="space-y-3 mb-6">
+                {availableTeams.map(team => (
+                  <label key={team.id} className="flex items-center gap-3 p-3 border border-neutral-200 rounded-lg cursor-pointer hover:bg-neutral-50">
+                    <input
+                      type="checkbox"
+                      checked={selectedTeams.includes(team.id)}
+                      onChange={() => handleTeamToggle(team.id)}
+                      className="rounded"
+                    />
+                    <span className="text-xl">{team.icon}</span>
+                    <span className="font-medium">{team.name}</span>
+                  </label>
+                ))}
               </div>
               
-              <div className="p-6">
-                <div className="space-y-3">
-                  {availableTeams.map(team => (
-                    <div key={team.id} className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className="text-lg">{team.icon}</span>
-                        <div>
-                          <div className="font-medium text-neutral-900">{team.name}</div>
-                          <div className="text-xs text-neutral-500">
-                            {getMilestoneCountForTeam(team.id)} milestones
-                          </div>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => handleTeamToggle(team.id)}
-                        className={`w-12 h-6 rounded-full transition-colors relative ${
-                          selectedTeams.includes(team.id)
-                            ? 'bg-blue-500'
-                            : 'bg-gray-300'
-                        }`}
-                      >
-                        <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${
-                          selectedTeams.includes(team.id)
-                            ? 'translate-x-7'
-                            : 'translate-x-1'
-                        }`}></div>
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                
-                <div className="mt-6 pt-4 border-t border-neutral-200">
-                  <button
-                    onClick={() => setShowTeamSettings(false)}
-                    className="btn-primary w-full"
-                  >
-                    Done
-                  </button>
-                </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowTeamSettings(false)}
+                  className="flex-1 px-4 py-2 bg-neutral-100 text-neutral-700 rounded-lg hover:bg-neutral-200 transition-colors"
+                >
+                  Done
+                </button>
               </div>
             </div>
           </div>
@@ -905,355 +860,224 @@ export const MorningReview = React.memo(function MorningReview() {
               }
             }}
           >
-            <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-              <div className="p-6 border-b border-neutral-200">
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h3 className="text-xl font-semibold text-neutral-900 mb-1">
-                      {selectedMilestone.title}
-                    </h3>
-                    <p className="text-neutral-600">{selectedMilestone.description}</p>
-                  </div>
-                  <button 
-                    onClick={() => setSelectedMilestone(null)}
-                    className="text-neutral-400 hover:text-neutral-600 text-2xl leading-none"
-                  >
-                    ×
-                  </button>
-                </div>
-                
-                <div className="flex items-center gap-4 text-sm">
-                  <span className={`px-2 py-1 rounded-full border ${getStatusColor(selectedMilestone.status)}`}>
-                    {getStatusIcon(selectedMilestone.status)} {selectedMilestone.status.replace('_', ' ')}
-                  </span>
-                  <span className={`px-2 py-1 rounded-full border ${selectedMilestone.team.color}`}>
-                    {selectedMilestone.team.icon} {selectedMilestone.team.name}
-                  </span>
-                  <span className="text-neutral-500">
-                    Due: {new Date(selectedMilestone.due_date).toLocaleDateString()}
-                  </span>
-                  <span className={`font-medium ${getPriorityColor(selectedMilestone.priority)}`}>
-                    {selectedMilestone.priority.toUpperCase()} PRIORITY
-                  </span>
-                </div>
-                
-                {/* Progress */}
-                <div className="mt-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-neutral-700">Progress</span>
-                    <span className="text-sm text-neutral-500">{selectedMilestone.progress_percentage}%</span>
-                  </div>
-                  <div className="bg-neutral-200 rounded-full h-3">
-                    <div 
-                      className="bg-blue-500 h-3 rounded-full transition-all duration-300"
-                      style={{ width: `${selectedMilestone.progress_percentage}%` }}
-                    ></div>
+            <div className="bg-white rounded-2xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="flex items-start justify-between mb-6">
+                <div>
+                  <h3 className="text-xl font-semibold mb-2">{selectedMilestone.title}</h3>
+                  <p className="text-neutral-600 mb-4">{selectedMilestone.description}</p>
+                  
+                  <div className="flex items-center gap-4 text-sm">
+                    <span className={`px-3 py-1 rounded-full border ${selectedMilestone.team.color}`}>
+                      {selectedMilestone.team.icon} {selectedMilestone.team.name}
+                    </span>
+                    <span className="text-neutral-500">
+                      Due: {formatDueDate(selectedMilestone.due_date)}
+                    </span>
+                    <span className="text-neutral-500">
+                      {selectedMilestone.progress}% complete
+                    </span>
                   </div>
                 </div>
+                <button
+                  onClick={() => setSelectedMilestone(null)}
+                  className="text-neutral-400 hover:text-neutral-600 p-2"
+                >
+                  ✕
+                </button>
               </div>
-              
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="font-semibold text-neutral-900">
-                    Tasks ({getFilteredTasksByStatus(selectedMilestone).length})
-                  </h4>
-                  
-                  {/* Status Filter */}
-                  <div className="flex gap-1 flex-wrap">
-                    {getUniqueTaskStatuses(selectedMilestone).map(status => (
-                      <button
-                        key={status}
-                        onClick={() => setTaskStatusFilter(status)}
-                        className={`px-3 py-1 text-xs rounded-full border transition-colors ${
-                          taskStatusFilter === status 
-                            ? 'bg-blue-100 text-blue-800 border-blue-200' 
-                            : 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200'
-                        }`}
-                      >
-                        {status === 'all' ? 'All' : status.charAt(0).toUpperCase() + status.slice(1)}
-                      </button>
-                    ))}
+
+              {/* Task Status Filter */}
+              <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
+                {getUniqueTaskStatuses(selectedMilestone).map(status => (
+                  <button
+                    key={status}
+                    onClick={() => setTaskStatusFilter(status)}
+                    className={`px-3 py-1 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                      taskStatusFilter === status
+                        ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                        : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'
+                    }`}
+                  >
+                    {status === 'all' ? 'All Tasks' : status.replace('_', ' ')} 
+                    ({status === 'all' ? selectedMilestone.tasks.length : selectedMilestone.tasks.filter(t => t.status.toLowerCase() === status).length})
+                  </button>
+                ))}
+              </div>
+
+              {/* Tasks */}
+              <div className="space-y-3">
+                {getFilteredTasksByStatus(selectedMilestone).map(task => (
+                  <div 
+                    key={task.id} 
+                    className="border border-neutral-200 rounded-xl p-4 cursor-pointer hover:border-neutral-300 transition-colors"
+                    onClick={() => {
+                      if (task.url) {
+                        window.open(task.url, '_blank')
+                      }
+                    }}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <h4 className="font-medium text-neutral-900">{task.title}</h4>
+                      <span className={`px-2 py-1 rounded text-xs border ${getTaskStatusColor(task.status)}`}>
+                        {task.status}
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center gap-4 text-sm text-neutral-500">
+                      {task.assignee && (
+                        <span>👤 {task.assignee}</span>
+                      )}
+                      {task.due_date && (
+                        <span>📅 {new Date(task.due_date).toLocaleDateString()}</span>
+                      )}
+                      {task.cycle && (
+                        <span>🔄 {task.cycle}</span>
+                      )}
+                    </div>
                   </div>
-                </div>
-                
-                <div className="space-y-3">
-                  {getFilteredTasksByStatus(selectedMilestone).map(task => (
-                    <div 
-                      key={task.id} 
-                      className="border border-neutral-200 rounded-xl p-4 hover:border-neutral-300 transition-colors cursor-pointer hover:bg-neutral-50"
-                      onClick={() => {
-                        if (task.url) {
-                          window.open(task.url, '_blank')
-                        }
-                      }}
-                    >
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="font-medium text-neutral-900">{task.title}</span>
-                            <span className={`text-xs px-2 py-1 rounded-full border ${getTaskStatusColor(task.status)}`}>
-                              {task.status.charAt(0).toUpperCase() + task.status.slice(1)}
-                            </span>
-                          </div>
-                          {task.description && (
-                            <p className="text-sm text-neutral-600 mb-2">{task.description}</p>
-                          )}
-                        </div>
-                        <div className="ml-4 text-right">
-                          <div className={`text-xs font-medium ${getPriorityColor(task.priority)}`}>
-                            {typeof task.priority === 'string' ? task.priority.toUpperCase() : 'MEDIUM'}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center justify-between text-xs text-neutral-500">
-                        <div className="flex items-center gap-4">
-                          {task.due_date && (
-                            <span>
-                              📅 Due: {new Date(task.due_date).toLocaleDateString()}
-                            </span>
-                          )}
-                          {task.assignee && (
-                            <span>
-                              👤 {task.assignee}
-                            </span>
-                          )}
-                        </div>
-                        {task.url && (
-                          <a 
-                            href={task.url} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:text-blue-800 underline"
-                          >
-                            View in Linear →
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                  
-                  {getFilteredTasksByStatus(selectedMilestone).length === 0 && (
-                    <div className="text-center py-8">
-                      <div className="text-2xl mb-2">📝</div>
-                      <p className="text-neutral-500">
-                        {taskStatusFilter === 'all' ? 'No tasks yet' : `No ${taskStatusFilter} tasks`}
-                      </p>
-                    </div>
-                  )}
-                </div>
+                ))}
               </div>
             </div>
           </div>
         )}
 
         {/* Flashcards Due */}
-        <div className="card-container animate-fade-in-up">
-          <h2 className="section-title mb-2">
-            🧠 Flashcards Due
-          </h2>
-          <p className="subtext mb-4">{flashcardsDue.length} cards ready for review</p>
-          
-          {flashcardsDue.length > 0 ? (
+        {flashcardsDue.length > 0 && (
+          <div className="card-container animate-fade-in-up">
+            <h2 className="section-title mb-4">
+              🧠 Flashcards Due ({flashcardsDue.length})
+            </h2>
             <div className="space-y-3">
-              {flashcardsDue.slice(0, 3).map((card) => (
-                <div key={card.id} className="bg-white border border-neutral-200 rounded-2xl p-4">
-                  <p className="text-neutral-900 text-sm mb-2 line-clamp-2">{card.question}</p>
-                  <div className="flex flex-wrap gap-1 mb-3">
-                    {card.tags.map((tag) => (
-                      <span key={tag} className="px-2 py-1 bg-blue-50 text-blue-600 text-xs rounded-full border border-blue-200">
+              {flashcardsDue.slice(0, 3).map((flashcard) => (
+                <div key={flashcard.id} className="p-4 border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-colors">
+                  <p className="font-medium text-neutral-900 mb-2">{flashcard.question}</p>
+                  <div className="flex gap-2">
+                    {flashcard.tags.map((tag, idx) => (
+                      <span key={idx} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
                         {tag}
                       </span>
                     ))}
                   </div>
                 </div>
               ))}
-              
-              <div className="flex flex-col sm:flex-row gap-3 pt-4">
-                <button 
-                  onClick={() => window.location.href = '/flashcards?mode=review'}
-                  className="btn-primary flex-1"
-                >
-                  Start Review Session
-                </button>
-                <button 
-                  onClick={() => window.location.href = '/flashcards'}
-                  className="btn-secondary flex-1"
-                >
-                  View All Cards
-                </button>
-              </div>
-            </div>
-              ) : (
-                <div className="text-center py-8">
-              <div className="text-4xl mb-2">✅</div>
-              <p className="subtext">No cards due today. Great work!</p>
-            </div>
-          )}
-        </div>
-
-        {/* Top Insight */}
-        {aiInsights.length > 0 && (
-          <div className="card-container animate-fade-in-up">
-            <h2 className="section-title mb-4">
-              📊 Top Insight
-            </h2>
-            <div className="bg-white border border-neutral-200 rounded-2xl p-4">
-              <div className="text-xs text-neutral-500 mb-2 uppercase tracking-wide">
-                From: {aiInsights[0].meeting_title} • {aiInsights[0].meeting_date ? new Date(aiInsights[0].meeting_date).toLocaleDateString() : 'Recent'}
-              </div>
-              <div className="text-neutral-900 text-sm mb-4">
-                {aiInsights[0].insight_text}
-              </div>
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  <span className={`text-xs px-2 py-1 rounded-full bg-neutral-100 border ${getPriorityColor(aiInsights[0].priority)}`}>
-                    {aiInsights[0].priority.toUpperCase()}
-                  </span>
-                  <span className="text-xs text-neutral-500">
-                    Score: {aiInsights[0].goal_scores.overall}/10
-                  </span>
-                </div>
-                <div className="flex gap-2">
-                  <button 
-                    onClick={() => handleInsightAction(aiInsights[0].id, 'star')}
-                    className="text-neutral-400 hover:text-yellow-600 transition-colors touch-target"
-                    title="Save"
-                  >
-                    ⭐
-                  </button>
-                  <button 
-                    onClick={() => handleInsightAction(aiInsights[0].id, 'flashcard')}
-                    className="text-neutral-400 hover:text-blue-600 transition-colors touch-target"
-                    title="Create Flashcard"
-                  >
-                    ➕
+              {flashcardsDue.length > 3 && (
+                <div className="text-center">
+                  <button className="btn-primary">
+                    Review All ({flashcardsDue.length})
                   </button>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         )}
-
-        {/* Today's Focus */}
-        <div className="card-container animate-fade-in-up">
-          <h2 className="section-title mb-4">
-            ☀️ Today's Focus
-          </h2>
-          <div className="bg-white border border-neutral-200 rounded-2xl p-4">
-            <div className="text-neutral-900 font-medium mb-2">Outline video script</div>
-            <div className="subtext">Create detailed outline for next product demo video</div>
-          </div>
-          <button className="btn-secondary w-full mt-4">
-            Update Focus
-          </button>
-        </div>
 
         {/* AI Insights */}
-        {aiInsights.length > 1 && (
-          <div className="card-container animate-fade-in-up">
-            <h2 className="section-title mb-2">
-              🎯 Recent Insights
-            </h2>
-            <p className="subtext mb-4">AI-generated insights from your meetings</p>
-            
-            <div className="space-y-3">
-              {aiInsights.slice(1, 4).map((insight) => (
-                <div key={insight.id} className="bg-white border border-neutral-200 rounded-2xl p-4">
-                  <div className="text-xs text-neutral-500 mb-2 uppercase tracking-wide">
-                    {insight.meeting_title} • {insight.meeting_date ? new Date(insight.meeting_date).toLocaleDateString() : 'Recent'}
-                  </div>
-                  <div className="text-neutral-900 text-sm mb-4">
-                    {insight.insight_text}
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs px-2 py-1 rounded-full bg-neutral-100 border ${getPriorityColor(insight.priority)}`}>
-                        {insight.priority.toUpperCase()}
-                      </span>
-                      <span className="text-xs text-neutral-500">
-                        Score: {insight.goal_scores.overall}/10
-                      </span>
-                    </div>
-                    <div className="flex gap-2">
-                      <button 
-                        onClick={() => handleInsightAction(insight.id, 'star')}
-                        className="text-neutral-400 hover:text-yellow-600 transition-colors text-sm touch-target"
-                        title="Save"
-                      >
-                        ⭐
-                      </button>
-                      <button 
-                        onClick={() => handleInsightAction(insight.id, 'flashcard')}
-                        className="text-neutral-400 hover:text-blue-600 transition-colors text-sm touch-target"
-                        title="Create Flashcard"
-                      >
-                        ➕
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            
-            <button 
-              onClick={() => window.location.href = '/insights'}
-              className="btn-secondary w-full mt-4"
-            >
-              View All Insights
-            </button>
-          </div>
-        )}
-
-        {/* Loading state for insights */}
-        {insightsLoading && (
-          <div className="card-container">
-            <h2 className="section-title mb-4">
-              🎯 Recent Insights
-            </h2>
+        <div className="card-container animate-fade-in-up">
+          <h2 className="section-title mb-4">
+            🤖 AI Insights
+          </h2>
+          {insightsLoading ? (
             <div className="space-y-3">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="skeleton h-20 rounded-xl"></div>
               ))}
             </div>
-          </div>
-        )}
+          ) : aiInsights.length > 0 ? (
+            <div className="space-y-4">
+              {aiInsights.map((insight) => (
+                <div key={insight.id} className="p-4 border border-neutral-200 rounded-xl">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <h4 className="font-medium text-neutral-900 mb-1">{insight.insight_text}</h4>
+                      <p className="text-sm text-neutral-600 mb-2">{insight.context}</p>
+                      
+                      <div className="flex items-center gap-2 text-xs text-neutral-500">
+                        <span className="bg-neutral-100 px-2 py-1 rounded">
+                          {insight.category}
+                        </span>
+                        <span className={`px-2 py-1 rounded ${
+                          insight.priority === 'high' ? 'bg-red-100 text-red-800' :
+                          insight.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-green-100 text-green-800'
+                        }`}>
+                          {insight.priority}
+                        </span>
+                        <span>{insight.meeting_title}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex gap-2 ml-4">
+                      <button
+                        onClick={() => handleInsightAction(insight.id, 'star')}
+                        className="p-2 text-neutral-400 hover:text-yellow-500 transition-colors"
+                        title="Star insight"
+                      >
+                        ⭐
+                      </button>
+                      {!insight.has_flashcard && (
+                        <button
+                          onClick={() => handleInsightAction(insight.id, 'flashcard')}
+                          className="p-2 text-neutral-400 hover:text-blue-500 transition-colors"
+                          title="Create flashcard"
+                        >
+                          🧠
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {insight.how_to_implement && (
+                    <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+                      <p className="text-sm text-blue-800">
+                        <strong>How to implement:</strong> {insight.how_to_implement}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <div className="text-4xl mb-2">🤖</div>
+              <p className="subtext">No insights available yet</p>
+            </div>
+          )}
+        </div>
 
         {/* Recent Meetings */}
         {meetings.length > 0 && (
           <div className="card-container animate-fade-in-up">
             <h2 className="section-title mb-4">
-              🎙️ Recent Meetings
+              📋 Recent Meetings
             </h2>
             <div className="space-y-3">
               {meetings.map((meeting) => (
-                <div key={meeting.id} className="bg-white border border-neutral-200 rounded-2xl p-4">
-                  <div className="text-neutral-900 font-medium mb-1">{meeting.title}</div>
-                  <div className="subtext mb-2 line-clamp-2">{meeting.summary}</div>
-                  <div className="text-xs text-neutral-400">
+                <div key={meeting.id} className="p-4 border border-neutral-200 rounded-xl">
+                  <h4 className="font-medium text-neutral-900 mb-2">{meeting.title}</h4>
+                  <p className="text-sm text-neutral-600 mb-3">{meeting.summary}</p>
+                  
+                  {meeting.insights.length > 0 && (
+                    <div className="space-y-1">
+                      <h5 className="text-sm font-medium text-neutral-700">Action Items:</h5>
+                      <ul className="text-sm text-neutral-600 space-y-1">
+                        {meeting.insights.slice(0, 3).map((insight, idx) => (
+                          <li key={idx} className="flex items-start gap-2">
+                            <span className="text-neutral-400 mt-1">•</span>
+                            <span>{insight}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  
+                  <div className="text-xs text-neutral-400 mt-3">
                     {new Date(meeting.timestamp).toLocaleDateString()}
                   </div>
                 </div>
               ))}
             </div>
-            <button 
-              onClick={() => window.location.href = '/clips'}
-              className="btn-secondary w-full mt-4"
-            >
-              View All Meetings
-            </button>
           </div>
         )}
-
-        {/* CTA to start the day */}
-        <div className="text-center pb-8 animate-fade-in-up">
-          <button 
-            onClick={() => window.location.href = '/flashcards?mode=review'}
-            className="btn-primary px-8 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
-          >
-            Start Your Day →
-          </button>
-        </div>
       </div>
     </div>
   )

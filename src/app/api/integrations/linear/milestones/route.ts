@@ -22,23 +22,25 @@ export async function GET(request: NextRequest) {
 
     const linearAPI = createLinearAPI(linearApiKey)
 
-    // Get projects and their milestones
-    const projects = await linearAPI.getProjects()
+    // Get project milestones, projects, teams, and issues
+    const [projectMilestones, projects, teams, allIssues] = await Promise.all([
+      linearAPI.getProjectMilestones(),
+      linearAPI.getProjects(),
+      linearAPI.getTeams(),
+      linearAPI.getIssues()
+    ])
     
-    // Extract all milestones from projects
-    const allMilestones = projects.flatMap(project => 
-      project.milestones.nodes.map(milestone => ({
+    // Match milestones with their projects
+    const allMilestones = projectMilestones.map(milestone => {
+      const project = projects.find(p => p.id === milestone.project.id)
+      return {
         ...milestone,
-        project: {
+        project: project ? {
           id: project.id,
           name: project.name
-        },
-        team: project.team
-      }))
-    )
-
-    // Also get all issues to associate with milestones
-    const allIssues = await linearAPI.getIssues()
+        } : milestone.project
+      }
+    })
     
     // Create milestones with their tasks
     const milestonesWithTasks = allMilestones.map(milestone => {
@@ -48,41 +50,64 @@ export async function GET(request: NextRequest) {
         id: issue.id,
         identifier: issue.identifier,
         title: issue.title,
-        state: issue.state,
-        assignee: issue.assignee,
-        priority: issue.priority,
-        dueDate: issue.dueDate,
+        status: issue.state?.name || 'Todo',
+        assignee: issue.assignee?.name,
+        priority: issue.priority || 0,
+        due_date: issue.dueDate,
         url: issue.url,
         labels: issue.labels?.nodes || []
       }))
 
+      // Get team from the first task's team, or default to a general team
+      const firstTask = allIssues.find(issue => issue.projectMilestone?.id === milestone.id)
+      const team = firstTask?.team || { key: 'GEN', name: 'General', id: 'general' }
+
+      const progress = calculateMilestoneProgress(milestone)
+
       return {
         id: milestone.id,
         title: milestone.name,
-        description: milestone.description,
-        targetDate: milestone.targetDate,
-        sortOrder: milestone.sortOrder,
-        project_id: milestone.project.id,
-        project_name: milestone.project.name,
-        team_id: milestone.team.id,
-        team_name: milestone.team.name,
-        team_key: milestone.team.key,
-        taskCount: tasks.length,
+        description: milestone.description || 'No description',
+        due_date: milestone.targetDate,
+        status: getStatusFromProgress(progress),
+        priority: determinePriority(milestone),
+        cycle: determineCycle(milestone.targetDate),
+        team: {
+          id: team.key.toLowerCase(),
+          name: team.name,
+          key: team.key,
+          icon: getTeamIcon(team.key),
+          color: getTeamColor(team.key)
+        },
         tasks: tasks,
-        createdAt: milestone.createdAt,
-        updatedAt: milestone.updatedAt
+        progress: progress,
+        created_at: milestone.createdAt,
+        updated_at: milestone.updatedAt,
+        overdue: milestone.targetDate ? new Date(milestone.targetDate) < new Date() : false,
+        project: {
+          id: milestone.project.id,
+          name: milestone.project.name
+        }
       }
     })
 
-    // Cache the response for 10 minutes (600000ms)
-    apiCache.set(cacheKey, milestonesWithTasks, 600000)
+    const response = {
+      success: true,
+      milestones: milestonesWithTasks
+    }
 
-    return NextResponse.json(milestonesWithTasks)
+    // Cache the response for 10 minutes (600000ms)
+    apiCache.set(cacheKey, response, 600000)
+
+    return NextResponse.json(response)
     
   } catch (error) {
     console.error('Error fetching Linear milestones:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch milestones' },
+      { 
+        error: 'Failed to fetch milestones',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     )
   }
@@ -138,5 +163,43 @@ function determinePriority(milestone: any): 'high' | 'medium' | 'low' {
   return 'low'
 }
 
-// Removed generateSampleDueDate function since we don't want fake due dates
-// Tasks should only have due dates if they actually have them in Linear
+function getTeamIcon(teamKey: string): string {
+  const icons: Record<string, string> = {
+    'MAR': '📢',
+    'ENG': '⚙️',
+    'PROD': '🎯',
+    'DES': '🎨',
+    'BIZ': '💼',
+    'OPS': '⚡',
+    'GEN': '📋',
+    'FUN': '💰',
+    'PUL': '📱',
+    'FIR': '🔧',
+    'HARD': '🛠️',
+    'CRE': '🎨',
+    'WEB': '🌐',
+    'MOB': '📱'
+  }
+  return icons[teamKey] || '📋'
+}
+
+function getTeamColor(teamKey: string): string {
+  const colors: Record<string, string> = {
+    'MAR': 'bg-blue-100 text-blue-800 border-blue-200',
+    'ENG': 'bg-purple-100 text-purple-800 border-purple-200',
+    'PROD': 'bg-green-100 text-green-800 border-green-200',
+    'DES': 'bg-pink-100 text-pink-800 border-pink-200',
+    'BIZ': 'bg-orange-100 text-orange-800 border-orange-200',
+    'OPS': 'bg-yellow-100 text-yellow-800 border-yellow-200',
+    'GEN': 'bg-gray-100 text-gray-800 border-gray-200',
+    'FUN': 'bg-emerald-100 text-emerald-800 border-emerald-200',
+    'PUL': 'bg-indigo-100 text-indigo-800 border-indigo-200',
+    'FIR': 'bg-red-100 text-red-800 border-red-200',
+    'HARD': 'bg-slate-100 text-slate-800 border-slate-200',
+    'CRE': 'bg-pink-100 text-pink-800 border-pink-200',
+    'WEB': 'bg-cyan-100 text-cyan-800 border-cyan-200',
+    'MOB': 'bg-violet-100 text-violet-800 border-violet-200'
+  }
+  return colors[teamKey] || 'bg-gray-100 text-gray-800 border-gray-200'
+}
+
