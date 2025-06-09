@@ -66,6 +66,7 @@ setInterval(() => {
 export const CACHE_KEYS = {
   LINEAR_MILESTONES: 'linear:milestones',
   LINEAR_ISSUES: 'linear:issues',
+  LINEAR_ACTIVE_TASKS: 'linear:active_tasks',
   FLASHCARDS: 'flashcards:due',
   MEETINGS: 'meetings:recent',
   AI_INSIGHTS: 'ai:insights'

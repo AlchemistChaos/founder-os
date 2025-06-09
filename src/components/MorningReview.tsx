@@ -289,12 +289,21 @@ export const MorningReview = React.memo(function MorningReview() {
 
   // Recalculate tasks when activeTab or milestones change
   useEffect(() => {
-    if (milestones.length > 0) {
-      const weeklyTasksResult = getWeeklyTasks(milestones)
-      const activeTasksResult = getActiveTasksWithoutDueDates(milestones)
+    const updateTasks = async () => {
+      // console.log('updateTasks called - milestones.length:', milestones.length, 'activeTab:', activeTab)
+      
+      // Get weekly tasks from Linear API (not just milestones)
+      const weeklyTasksResult = await getWeeklyTasksFromLinear()
       setWeeklyTasks(weeklyTasksResult)
+      
+      // Get active tasks from Linear API
+      // console.log('Calling getActiveTasksWithoutDueDates...')
+      const activeTasksResult = await getActiveTasksWithoutDueDates()
+      // console.log('Active tasks result:', activeTasksResult)
       setActiveTasks(activeTasksResult)
     }
+    
+    updateTasks()
   }, [activeTab, milestones])
 
   // Memoize event handlers
@@ -452,30 +461,161 @@ export const MorningReview = React.memo(function MorningReview() {
     return weekDates
   }
 
-  const getActiveTasksWithoutDueDates = (milestones: Milestone[]) => {
-    const activeTasks: Task[] = []
-    // Include more Linear statuses to catch all active tasks
-    const activeStatuses = ['backlog', 'todo', 'in_progress', 'review', 'in review', 'started', 'doing', 'blocked', 'triage']
+  const getWeeklyTasksFromLinear = async () => {
+    const weeklyTasksMap: {[key: string]: Task[]} = {
+      monday: [],
+      tuesday: [],
+      wednesday: [],
+      thursday: [],
+      friday: []
+    }
     
-    // Filter milestones by active tab
-    const filteredMilestones = activeTab === 'all' 
-      ? milestones 
-      : milestones.filter(milestone => milestone.team_id === activeTab)
-    
-    filteredMilestones.forEach(milestone => {
-      milestone.tasks.forEach(task => {
-        // Only include tasks without due dates that are in active statuses
-        if (!task.due_date && activeStatuses.includes(task.status.toLowerCase())) {
-          activeTasks.push({
-            ...task,
-            milestone_title: milestone.title,
-            milestone_id: milestone.id
+    try {
+      // Get all issues from Linear API
+      const { data: { session } } = await supabase.auth.getSession()
+      const headers: HeadersInit = session?.access_token ? {
+        'Authorization': `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json'
+      } : {
+        'Content-Type': 'application/json'
+      }
+
+      // Get team key for the API call  
+      const teamKey = getTeamKeyFromId(activeTab)
+      const apiUrl = activeTab === 'all' 
+        ? '/api/integrations/linear/active-tasks?includeDueDates=true'
+        : `/api/integrations/linear/active-tasks?team=${teamKey}&includeDueDates=true`
+
+      const response = await fetch(apiUrl, { headers })
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success) {
+          // Calculate current business week dates
+          const today = new Date()
+          const currentDayOfWeek = today.getDay() // 0 = Sunday, 1 = Monday, etc.
+          
+          let startOfBusinessWeek: Date
+          if (currentDayOfWeek === 0) {
+            // Today is Sunday, show next week's tasks (Monday to Friday)
+            startOfBusinessWeek = new Date(today)
+            startOfBusinessWeek.setDate(today.getDate() + 1) // Next Monday
+          } else {
+            // Show current week's business days
+            startOfBusinessWeek = new Date(today)
+            startOfBusinessWeek.setDate(today.getDate() - (currentDayOfWeek - 1)) // This Monday
+          }
+          
+          // Filter tasks with due dates in this business week
+          data.tasks.forEach((task: any) => {
+            if (task.due_date) {
+              const taskDate = new Date(task.due_date)
+              
+              // Check if task is due Monday-Friday of the target week
+              for (let i = 0; i < 5; i++) {
+                const dayDate = new Date(startOfBusinessWeek)
+                dayDate.setDate(startOfBusinessWeek.getDate() + i)
+                
+                // Check if task is due on this specific day
+                if (taskDate.toDateString() === dayDate.toDateString()) {
+                  const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
+                  weeklyTasksMap[dayNames[i]].push({
+                    id: task.id,
+                    title: task.title,
+                    status: task.status,
+                    assignee: task.assignee,
+                    priority: task.priority || 0,
+                    due_date: task.due_date,
+                    url: task.url,
+                    milestone_title: task.milestone?.name || (task.project?.name || 'No Project'),
+                    milestone_id: task.milestone?.id || null
+                  })
+                  break
+                }
+              }
+            }
           })
         }
-      })
-    })
+      }
+    } catch (error) {
+      console.error('Error fetching weekly tasks:', error)
+    }
+    
+    return weeklyTasksMap
+  }
+
+  const getActiveTasksWithoutDueDates = async () => {
+    const activeTasks: Task[] = []
+    // Include more Linear statuses to catch all active tasks
+    const activeStatuses = ['backlog', 'todo', 'in_progress', 'review', 'in review', 'started', 'doing', 'blocked', 'triage', 'on hold']
+    
+    try {
+      // Get all issues from our new active tasks API
+      const { data: { session } } = await supabase.auth.getSession()
+      const headers: HeadersInit = session?.access_token ? {
+        'Authorization': `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json'
+      } : {
+        'Content-Type': 'application/json'
+      }
+
+      // Get team key for the API call
+      const teamKey = getTeamKeyFromId(activeTab)
+      const apiUrl = activeTab === 'all' 
+        ? '/api/integrations/linear/active-tasks'
+        : `/api/integrations/linear/active-tasks?team=${teamKey}`
+
+      // Fetch active tasks from our new API
+      // console.log('Fetching active tasks from:', apiUrl)
+      const response = await fetch(apiUrl, { headers })
+      // console.log('Response status:', response.status, response.ok)
+      if (response.ok) {
+        const data = await response.json()
+        // console.log('Active tasks API response:', data)
+        if (data.success) {
+          // Convert to our task format
+          data.tasks.forEach((task: any) => {
+            activeTasks.push({
+              id: task.id,
+              title: task.title,
+              status: task.status,
+              assignee: task.assignee,
+              priority: task.priority || 0,
+              due_date: task.due_date,
+              url: task.url,
+              milestone_title: task.milestone?.name || (task.project?.name || 'No Project'),
+              milestone_id: task.milestone?.id || null
+            })
+          })
+          // console.log('Processed active tasks:', activeTasks)
+        }
+      } else {
+        console.error('API call failed:', response.status, await response.text())
+      }
+    } catch (error) {
+      console.error('Error fetching active tasks:', error)
+    }
     
     return activeTasks
+  }
+
+  // Helper function to convert team id to team key
+  const getTeamKeyFromId = (teamId: string): string => {
+    const teamMap: Record<string, string> = {
+      'mar': 'MAR',
+      'eng': 'ENG', 
+      'product': 'PROD',
+      'design': 'DES',
+      'biz': 'BIZ',
+      'ops': 'OPS',
+      'fun': 'FUN',
+      'pul': 'PUL',
+      'fir': 'FIR',
+      'hard': 'HARD',
+      'cre': 'CRE',
+      'web': 'WEB',
+      'mob': 'MOB'
+    }
+    return teamMap[teamId] || teamId.toUpperCase()
   }
 
   const getTaskStatusColor = (status: string) => {
@@ -588,6 +728,8 @@ export const MorningReview = React.memo(function MorningReview() {
     return tabs
   }
 
+  // console.log('MorningReview render - activeTasks:', activeTasks, 'activeTab:', activeTab)
+  
   return (
     <div className="theme-light min-h-screen p-4">
       <div className="max-w-7xl mx-auto space-y-ritual">
@@ -621,7 +763,7 @@ export const MorningReview = React.memo(function MorningReview() {
                   
                   {dayTasks.length > 0 ? (
                     <div className="space-y-2">
-                      {dayTasks.slice(0, 3).map(task => (
+                      {dayTasks.slice(0, 5).map(task => (
                         <div 
                           key={task.id} 
                           className="bg-neutral-50 rounded-lg p-2 cursor-pointer hover:bg-neutral-100 transition-colors"
@@ -646,9 +788,9 @@ export const MorningReview = React.memo(function MorningReview() {
                           </div>
                         </div>
                       ))}
-                      {dayTasks.length > 3 && (
+                      {dayTasks.length > 5 && (
                         <div className="text-xs text-neutral-500 text-center">
-                          +{dayTasks.length - 3} more
+                          +{dayTasks.length - 5} more
                         </div>
                       )}
                     </div>
@@ -664,12 +806,12 @@ export const MorningReview = React.memo(function MorningReview() {
         </div>
 
         {/* Active Tasks Without Due Dates */}
-        {activeTasks.length > 0 && (
-          <div className="card-container animate-fade-in-up mb-6">
-            <h2 className="section-title mb-4">
-              🔄 Active Tasks (No Due Date)
-            </h2>
-            
+        <div className="card-container animate-fade-in-up mb-6">
+          <h2 className="section-title mb-4">
+            🔄 Active Tasks (No Due Date)
+          </h2>
+          
+          {activeTasks.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {activeTasks.map(task => (
                 <div 
@@ -700,8 +842,12 @@ export const MorningReview = React.memo(function MorningReview() {
                 </div>
               ))}
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="text-center py-4 text-neutral-500">
+              No active tasks found for this team.
+            </div>
+          )}
+        </div>
 
         {/* Milestones */}
         <div className="card-container animate-fade-in-up">
