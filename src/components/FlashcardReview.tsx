@@ -86,14 +86,12 @@ export function FlashcardReview({ theme = 'auto' }: FlashcardReviewProps) {
     setError(null)
     
     try {
+      const headers = await getAuthHeaders()
+      if (!headers) return
+
       const url = resetToday ? '/api/flashcards?todayReset=true' : '/api/flashcards'
       
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${supabase.auth.session()?.access_token}`,
-          'Content-Type': 'application/json',
-        },
-      })
+      const response = await fetch(url, { headers })
 
       if (!response.ok) {
         throw new Error(`Failed to fetch flashcards: ${response.status}`)
